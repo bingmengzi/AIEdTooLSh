@@ -1,0 +1,434 @@
+=== 完整参考案例：抛物线与焦点 ===
+以下是一个高质量教育交互动画的完整HTML代码。你生成的代码必须达到同等质量水平。
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>抛物线与焦点 - 互动数学实验室</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background-color: #F5F7FB;
+            overflow: hidden;
+            touch-action: none;
+        }
+        canvas {
+            display: block;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+            cursor: crosshair;
+        }
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #4285F4;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: #E0E7FF;
+            border-radius: 2px;
+        }
+        .active-control { border-color: #4285F4; background-color: #EFF6FF; }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col p-4 md:p-6 gap-4">
+
+    <!-- 顶部标题栏 -->
+    <header class="flex items-center justify-between bg-white rounded-xl shadow-md px-6 py-4 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                <i class="fa-solid fa-shapes text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold text-gray-800">抛物线探索实验室</h1>
+                <p class="text-xs md:text-sm text-gray-500">定义：到定点(焦点)与定直线(准线)距离相等的点的轨迹</p>
+            </div>
+        </div>
+        <button onclick="resetSimulation()" class="hidden md:flex px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium">
+            <i class="fa-solid fa-rotate-right mr-1"></i> 重置
+        </button>
+    </header>
+
+    <!-- 主体内容区 -->
+    <main class="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
+        <!-- 左侧：交互画布 -->
+        <section class="flex-1 relative bg-white rounded-xl shadow-lg overflow-hidden flex flex-col">
+            <div class="relative flex-1 w-full h-full" id="canvasContainer">
+                <canvas id="mainCanvas"></canvas>
+                <div class="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-2 rounded-lg shadow-sm border border-gray-100 pointer-events-none">
+                    <div class="flex items-center gap-2 text-sm text-gray-600">
+                        <i class="fa-solid fa-hand-pointer text-blue-500"></i>
+                        <span>拖拽 <b class="text-red-500">红点</b> 或 <b class="text-gray-500">虚线</b> 改变形状</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右侧：控制面板 -->
+        <aside class="w-full lg:w-80 flex flex-col gap-4 shrink-0">
+            <!-- 参数控制卡片 -->
+            <div class="bg-white rounded-xl shadow-md p-5 flex-1 flex flex-col gap-6">
+                <div class="border-b border-gray-100 pb-3">
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-yellow-500"></i> 参数控制
+                    </h2>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <label class="font-medium text-gray-700">焦距 (p)</label>
+                        <span class="text-blue-600 font-mono bg-blue-50 px-2 rounded" id="pValueDisplay">2.0</span>
+                    </div>
+                    <input type="range" id="pSlider" min="0.5" max="5" step="0.1" value="2" class="w-full">
+                    <p class="text-xs text-gray-400">控制开口大小：p 越大，开口越宽</p>
+                </div>
+                <!-- 实时方程 -->
+                <div class="mt-auto bg-gray-50 rounded-lg p-4 border border-gray-100">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase mb-3">实时方程</h3>
+                    <div class="font-mono text-lg text-center text-gray-800 bg-white py-2 rounded shadow-sm border" id="equationDisplay">y² = 8x</div>
+                    <div class="mt-3 flex justify-between text-xs text-gray-500">
+                        <span>焦点 F:</span>
+                        <span class="font-mono text-red-500" id="focusCoord">(2, 0)</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>准线:</span>
+                        <span class="font-mono text-gray-600" id="directrixCoord">x = -2</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 知识点卡片 -->
+            <div class="bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-md p-5 flex-1 border border-indigo-100">
+                <h2 class="text-lg font-bold text-indigo-800 mb-3 flex items-center gap-2">
+                    <i class="fa-regular fa-lightbulb"></i> 几何性质
+                </h2>
+                <ul class="space-y-3 text-sm text-gray-600">
+                    <li class="flex items-start gap-2">
+                        <span class="mt-1 w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+                        <span><b class="text-gray-800">等距性：</b> 抛物线上任意点 P 到焦点距离 |PF| 等于到准线距离 |PL|</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="mt-1 w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+                        <span><b class="text-gray-800">对称性：</b> 关于过焦点且垂直于准线的直线对称</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <span class="mt-1 w-2 h-2 rounded-full bg-yellow-500 shrink-0"></span>
+                        <span><b class="text-gray-800">顶点：</b> 焦点与准线连线段的中点</span>
+                    </li>
+                </ul>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        // === 颜色常量 ===
+        const COLORS = {
+            primary: '#4285F4',   // 蓝 - 主曲线
+            accent: '#EA4335',    // 红 - 焦点
+            secondary: '#64748b', // 灰 - 准线
+            success: '#34A853',   // 绿 - 辅助
+            warning: '#FBBC05',   // 黄 - 动画点
+            grid: '#f0f0f0',
+            axis: '#cbd5e1'
+        };
+
+        // === 状态管理 ===
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvasContainer');
+
+        let state = {
+            p: 2.0,                    // 焦距，必须非零
+            isDraggingFocus: false,
+            isDraggingDirectrix: false,
+            dragOffset: 0,
+            animPointT: 0              // 动画参数
+        };
+
+        // DOM 元素
+        const pSlider = document.getElementById('pSlider');
+        const pValueDisplay = document.getElementById('pValueDisplay');
+        const equationDisplay = document.getElementById('equationDisplay');
+        const focusCoordDisplay = document.getElementById('focusCoord');
+        const directrixCoordDisplay = document.getElementById('directrixCoord');
+
+        // === 初始化 ===
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            pSlider.addEventListener('input', (e) => {
+                state.p = parseFloat(e.target.value);
+                updateUI();
+                draw();
+            });
+
+            // 鼠标事件
+            canvas.addEventListener('mousedown', handleInputStart);
+            canvas.addEventListener('mousemove', handleInputMove);
+            window.addEventListener('mouseup', handleInputEnd);
+
+            // 触摸事件
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInputStart(e.touches[0]); }, {passive: false});
+            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handleInputMove(e.touches[0]); }, {passive: false});
+            window.addEventListener('touchend', handleInputEnd);
+
+            requestAnimationFrame(animate);
+            updateUI();
+            draw();
+        }
+
+        // === DPI 适配 ===
+        function resizeCanvas() {
+            const rect = container.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            canvas.style.width = `${rect.width}px`;
+            canvas.style.height = `${rect.height}px`;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+
+        // === 坐标转换 ===
+        function getCoords() {
+            const rect = canvas.getBoundingClientRect();
+            return { w: rect.width, h: rect.height, cx: rect.width / 2, cy: rect.height / 2 };
+        }
+
+        function toScreen(x, y, c) {
+            const scale = Math.min(c.w, c.h) / 12;
+            return { x: c.cx + x * scale, y: c.cy - y * scale };
+        }
+
+        function toLogic(sx, sy, c) {
+            const scale = Math.min(c.w, c.h) / 12;
+            return { x: (sx - c.cx) / scale, y: -(sy - c.cy) / scale };
+        }
+
+        // === 主绘图函数 ===
+        function draw() {
+            const c = getCoords();
+            ctx.clearRect(0, 0, c.w, c.h);
+
+            drawGrid(c);
+            drawAxes(c);
+            drawDirectrix(c);
+            drawParabola(c);
+            drawFocus(c);
+            drawAnimatedPoint(c);
+        }
+
+        function drawGrid(c) {
+            ctx.strokeStyle = COLORS.grid;
+            ctx.lineWidth = 1;
+            const step = Math.min(c.w, c.h) / 12;
+            ctx.beginPath();
+            for (let i = 0; i <= c.w; i += step) { ctx.moveTo(i, 0); ctx.lineTo(i, c.h); }
+            for (let i = 0; i <= c.h; i += step) { ctx.moveTo(0, i); ctx.lineTo(c.w, i); }
+            ctx.stroke();
+        }
+
+        function drawAxes(c) {
+            ctx.strokeStyle = COLORS.axis;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, c.cy); ctx.lineTo(c.w, c.cy);
+            ctx.moveTo(c.cx, 0); ctx.lineTo(c.cx, c.h);
+            ctx.stroke();
+            ctx.fillStyle = COLORS.secondary;
+            ctx.font = '12px Arial';
+            ctx.fillText('O', c.cx + 5, c.cy + 15);
+        }
+
+        function drawDirectrix(c) {
+            ctx.save();
+            ctx.strokeStyle = COLORS.secondary;
+            ctx.setLineDash([8, 8]);
+            ctx.lineWidth = 2;
+            const pos = toScreen(-state.p, 0, c).x;
+            ctx.beginPath();
+            ctx.moveTo(pos, 0);
+            ctx.lineTo(pos, c.h);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillText(`x = ${(-state.p).toFixed(1)}`, pos + 5, 20);
+            ctx.restore();
+        }
+
+        function drawParabola(c) {
+            ctx.save();
+            ctx.strokeStyle = COLORS.primary;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            let started = false;
+            for (let y = -10; y <= 10; y += 0.1) {
+                const x = (y * y) / (4 * state.p);
+                const pos = toScreen(x, y, c);
+                if (!started) { ctx.moveTo(pos.x, pos.y); started = true; }
+                else { ctx.lineTo(pos.x, pos.y); }
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawFocus(c) {
+            const pos = toScreen(state.p, 0, c);
+            // 光晕
+            const gradient = ctx.createRadialGradient(pos.x, pos.y, 2, pos.x, pos.y, 15);
+            gradient.addColorStop(0, 'rgba(234, 67, 53, 0.4)');
+            gradient.addColorStop(1, 'rgba(234, 67, 53, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            // 实心点
+            ctx.fillStyle = COLORS.accent;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+            // 标签
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText('F (焦点)', pos.x + 10, pos.y - 10);
+        }
+
+        function drawAnimatedPoint(c) {
+            const t = state.animPointT;
+            const px = state.p * t * t;
+            const py = 2 * state.p * t;
+            const dx = -state.p, dy = py;
+            const fx = state.p, fy = 0;
+
+            const pPos = toScreen(px, py, c);
+            const dPos = toScreen(dx, dy, c);
+            const fPos = toScreen(fx, fy, c);
+
+            // 连线
+            ctx.save();
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = COLORS.accent;
+            ctx.beginPath(); ctx.moveTo(pPos.x, pPos.y); ctx.lineTo(fPos.x, fPos.y); ctx.stroke();
+            ctx.strokeStyle = COLORS.success;
+            ctx.beginPath(); ctx.moveTo(pPos.x, pPos.y); ctx.lineTo(dPos.x, dPos.y); ctx.stroke();
+            ctx.restore();
+
+            // 动画点 (黄色+白边)
+            ctx.fillStyle = COLORS.warning;
+            ctx.beginPath();
+            ctx.arc(pPos.x, pPos.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 距离标签
+            ctx.fillStyle = COLORS.primary;
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('|PF|', (pPos.x + fPos.x) / 2 - 10, (pPos.y + fPos.y) / 2 - 5);
+            ctx.fillText('|PL|', (pPos.x + dPos.x) / 2 + 10, (pPos.y + dPos.y) / 2 + 5);
+        }
+
+        // === 动画循环 ===
+        function animate() {
+            state.animPointT += 0.02;
+            if (state.animPointT > 3.5) state.animPointT = -3.5;
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // === 交互处理 ===
+        function handleInputStart(e) {
+            const c = getCoords();
+            const rect = canvas.getBoundingClientRect();
+            const logicPos = toLogic(e.clientX - rect.left, e.clientY - rect.top, c);
+
+            const distToF = Math.sqrt((logicPos.x - state.p)**2 + logicPos.y**2);
+            if (distToF < 1.0) { state.isDraggingFocus = true; return; }
+
+            const distToD = Math.abs(logicPos.x - (-state.p));
+            if (distToD < 1.0) {
+                state.isDraggingDirectrix = true;
+                state.dragOffset = logicPos.x - (-state.p);
+            }
+        }
+
+        function handleInputMove(e) {
+            if (!state.isDraggingFocus && !state.isDraggingDirectrix) return;
+            const c = getCoords();
+            const rect = canvas.getBoundingClientRect();
+            const logicPos = toLogic(e.clientX - rect.left, e.clientY - rect.top, c);
+
+            if (state.isDraggingFocus) {
+                state.p = Math.max(0.5, Math.min(5, logicPos.x));
+            } else if (state.isDraggingDirectrix) {
+                state.p = Math.max(0.5, Math.min(5, -(logicPos.x - state.dragOffset)));
+            }
+            pSlider.value = state.p;
+            updateUI();
+            draw();
+        }
+
+        function handleInputEnd() {
+            state.isDraggingFocus = false;
+            state.isDraggingDirectrix = false;
+        }
+
+        // === UI 更新 ===
+        function updateUI() {
+            const p = state.p.toFixed(1);
+            pValueDisplay.textContent = p;
+            equationDisplay.textContent = `y² = ${(4 * state.p).toFixed(1)}x`;
+            focusCoordDisplay.textContent = `(${p}, 0)`;
+            directrixCoordDisplay.textContent = `x = ${(-state.p).toFixed(1)}`;
+        }
+
+        function resetSimulation() {
+            state.p = 2.0;
+            state.animPointT = 0;
+            pSlider.value = 2;
+            updateUI();
+            draw();
+        }
+
+        init();
+    </script>
+</body>
+</html>
+```
+
+---
+
+## 你生成的代码必须包含以上参考案例的所有关键特征：
+
+1. **完整HTML结构** - DOCTYPE → html → head(meta+CDN) → body
+2. **精美布局** - Tailwind三段式：header + main(canvas左 + panel右)
+3. **自定义CSS** - body背景、滑块样式、canvas样式
+4. **COLORS常量** - 脚本开头定义颜色常量
+5. **状态管理** - state对象集中管理参数和交互状态
+6. **DPI适配** - resizeCanvas()处理高清屏
+7. **坐标转换** - toScreen/toLogic函数
+8. **分层绘图** - draw()按顺序调用drawGrid/drawAxes/drawCurve/drawPoints
+9. **曲线绘制** - 参数方程for循环遍历
+10. **关键点光晕** - createRadialGradient效果
+11. **动画循环** - requestAnimationFrame + animPointT递增
+12. **完整交互** - 鼠标+触摸事件，拖拽与滑块双向同步
+13. **知识点卡片** - 渐变背景+彩色圆点列表

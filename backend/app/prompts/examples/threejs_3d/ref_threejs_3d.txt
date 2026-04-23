@@ -1,0 +1,526 @@
+<!-- 参考案例来源: 几何体解题.html | 类型: Three.js 3D | 特征: 3D几何模型+MathJax公式+步骤推导+视角切换+HTML标签叠加 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>立体几何互动课堂 - 探究三棱锥与空间向量</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- MathJax 公式渲染 -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.zcat.cn/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Three.js 及其控制器 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.zcat.cn/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        eduBlue: '#4285F4',
+                        eduRed: '#EA4335',
+                        eduYellow: '#FBBC05',
+                        eduGreen: '#34A853',
+                        bgLight: '#F5F7FB'
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(15px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Microsoft YaHei', sans-serif; background-color: #F5F7FB; overflow: hidden; }
+        /* 隐藏滚动条但保留功能 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* 3D画布上方的HTML标签 */
+        .scene-label {
+            position: absolute;
+            font-size: 14px;
+            font-weight: bold;
+            color: #1e293b;
+            pointer-events: none;
+            user-select: none;
+            text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.2s;
+        }
+    </style>
+</head>
+<body class="flex h-screen w-full p-4 gap-4 box-border min-w-[1024px]">
+
+    <!-- 左侧区域：题目与3D互动展示 -->
+    <div class="w-5/12 h-full flex flex-col gap-4">
+        
+        <!-- 题目卡片 -->
+        <div class="bg-white rounded-2xl shadow-md p-5 flex-shrink-0 relative overflow-hidden">
+            <div class="absolute top-0 right-0 bg-eduYellow text-white text-xs px-3 py-1 rounded-bl-lg font-bold">2020全国I卷</div>
+            <h2 class="text-xl font-bold text-slate-800 border-l-4 border-eduBlue pl-3 mb-3 flex items-center">
+                <i class="fas fa-book-open mr-2 text-eduBlue"></i> 例题探究
+            </h2>
+            <div class="text-slate-700 leading-relaxed text-[15px]">
+                如图，D为圆锥的顶点，O是底面圆心，AE是底面直径，AE=AD。<br>
+                $\triangle ABC$ 是底面的内接正三角形，P为DO上一点，$PO=\frac{\sqrt{6}}{6}DO$。
+                <div class="mt-2 font-semibold">
+                    （1）证明：$PA \perp$ 平面 $PBC$；<br>
+                    （2）求二面角 $B-PC-E$ 的余弦值。
+                </div>
+            </div>
+            <!-- 氛围图 -->
+            <img src="https://api.zcat.cn/udata/718570/png/89f2682ac6884181b03354425d7c0cc4.png" alt="几何氛围图" class="absolute -bottom-8 -right-8 w-32 opacity-20 pointer-events-none rounded-full">
+        </div>
+
+        <!-- 3D 互动区 -->
+        <div class="bg-white rounded-2xl shadow-md flex-grow relative overflow-hidden border-2 border-transparent hover:border-eduBlue/30 transition-colors">
+            <div class="absolute top-4 left-4 z-10 bg-white/80 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm text-sm font-bold text-eduBlue flex items-center gap-2">
+                <i class="fas fa-cube"></i> 3D 互动模型
+                <span class="text-xs text-slate-500 font-normal ml-1">可拖动旋转/缩放</span>
+            </div>
+            
+            <div class="absolute bottom-4 left-4 z-10 flex gap-2">
+                <button onclick="resetCamera()" class="bg-white text-slate-600 hover:text-eduBlue hover:bg-blue-50 px-3 py-2 rounded-lg shadow text-sm transition-all">
+                    <i class="fas fa-video"></i> 默认视角
+                </button>
+                <button onclick="topViewCamera()" class="bg-white text-slate-600 hover:text-eduBlue hover:bg-blue-50 px-3 py-2 rounded-lg shadow text-sm transition-all">
+                    <i class="fas fa-eye"></i> 俯视底面
+                </button>
+            </div>
+
+            <div id="canvas-container" class="w-full h-full cursor-grab active:cursor-grabbing"></div>
+        </div>
+    </div>
+
+    <!-- 右侧区域：互动解题步骤 -->
+    <div class="w-7/12 h-full bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden border border-slate-100">
+        
+        <!-- 头部控制条 -->
+        <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center shadow-md relative z-10">
+            <div class="flex items-center gap-3">
+                <div class="bg-eduGreen/20 text-eduGreen w-10 h-10 rounded-full flex items-center justify-center text-xl">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">课堂推演空间</h1>
+                    <div class="text-xs text-slate-300 mt-0.5">跟着思路步步深入，破解空间几何难题</div>
+                </div>
+            </div>
+            <button id="next-btn" onclick="nextStep()" class="bg-eduBlue hover:bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center gap-2">
+                <span>下一步分析</span>
+                <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+
+        <!-- 步骤滚动容器 -->
+        <div id="steps-container" class="flex-grow overflow-y-auto no-scrollbar p-6 bg-[#FAFAF5] flex flex-col gap-5">
+            
+            <!-- 初始欢迎卡片 -->
+            <div class="bg-white border-l-4 border-eduYellow p-5 rounded-xl shadow-sm text-slate-700 flex items-start gap-4">
+                <i class="fas fa-lightbulb text-eduYellow text-2xl mt-1"></i>
+                <div>
+                    <h3 class="font-bold text-lg mb-1">准备就绪</h3>
+                    <p class="text-sm">观察左侧的三维模型，你可以用鼠标或手指拖动它。准备好后，点击右上角的 <b>"下一步分析"</b> 开始推导解答！</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+<script>
+    // ==========================================
+    // 1. 解题步骤数据定义
+    // ==========================================
+    const stepsData = [
+        {
+            title: "突破口：转化题型",
+            icon: "fa-magnifying-glass",
+            color: "eduBlue",
+            content: `
+                <p>表面上这是一道圆锥题，实际上隐藏着正三棱锥！</p>
+                <ul class="list-disc ml-5 mt-2 space-y-1 text-sm text-slate-600">
+                    <li>因为 $\\triangle ABC$ 内接于底面且为正三角形，所以中心为 $O$。</li>
+                    <li>因为 $D$ 为圆锥顶点，它在底面的投影为 $O$。</li>
+                    <li>点 $P$ 在 $DO$ 上，所以 $P$ 在底面的投影也是 $O$ 点。</li>
+                </ul>
+                <div class="mt-3 bg-blue-50 text-eduBlue p-2 rounded-lg font-bold text-center border border-blue-100">
+                    结论：三棱锥 $P-ABC$ 为正三棱锥！
+                </div>
+            `
+        },
+        {
+            title: "基础准备：边长参数化计算",
+            icon: "fa-ruler-combined",
+            color: "eduGreen",
+            content: `
+                <p>设正三角形 $ABC$ 的外接圆半径为 $r$。则边长 $AB = AC = \\sqrt{3}r$。</p>
+                <div class="grid grid-cols-2 gap-4 mt-3 text-sm">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <b>求高 DO 与 PO：</b><br>
+                        由已知 $AE=AD=2r$, $AO=r$<br>
+                        得 $DO = \\sqrt{AD^2-AO^2} = \\sqrt{3}r$<br>
+                        又 $PO = \\frac{\\sqrt{6}}{6}DO$<br>
+                        得 $PO = \\frac{\\sqrt{2}}{2}r$
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <b>求侧棱长 AP：</b><br>
+                        在 $RT\\triangle POA$ 中<br>
+                        $AP = \\sqrt{AO^2 + PO^2}$<br>
+                        $AP = \\sqrt{r^2 + (\\frac{\\sqrt{2}}{2}r)^2} = \\frac{\\sqrt{6}}{2}r$
+                    </div>
+                </div>
+            `
+        },
+        {
+            title: "第(1)问：证明垂直关系",
+            icon: "fa-check-double",
+            color: "eduRed",
+            content: `
+                <p>在正三棱锥 $P-ABC$ 中，侧棱相等：$PA=PB=PC=\\frac{\\sqrt{6}}{2}r$。</p>
+                <p class="mt-2">在 $\\triangle PAB$ 和 $\\triangle PAC$ 中：</p>
+                <div class="bg-red-50 p-3 rounded-lg border border-red-100 mt-2 text-sm space-y-2">
+                    <p>$PA^2 + PC^2 = \\frac{6}{4}r^2 + \\frac{6}{4}r^2 = 3r^2 = AC^2$ &nbsp; $\\Rightarrow \\angle APC = 90^\\circ$</p>
+                    <p>$PA^2 + PB^2 = \\frac{6}{4}r^2 + \\frac{6}{4}r^2 = 3r^2 = AB^2$ &nbsp; $\\Rightarrow \\angle APB = 90^\\circ$</p>
+                </div>
+                <p class="mt-3">即 $AP \\perp PB$, $AP \\perp PC$。又 $PB \\cap PC = P$，<br>
+                <span class="font-bold text-eduRed">$\\therefore PA \\perp$ 平面 $PBC$。证明完毕！</span></p>
+            `
+        },
+        {
+            title: "第(2)问：空间向量建系",
+            icon: "fa-cubes",
+            color: "eduBlue",
+            content: `
+                <p>建立空间直角坐标系。为了方便，令半径 $r=2$。</p>
+                <p class="text-sm text-slate-500 mt-1">以O为原点，结合 $\\triangle ABC$ 的特征（设中心在原点），得到四点坐标：</p>
+                <div class="flex flex-wrap gap-3 mt-3">
+                    <span class="bg-slate-100 px-3 py-1 rounded shadow-sm font-mono">$B(1, \\sqrt{3}, 0)$</span>
+                    <span class="bg-slate-100 px-3 py-1 rounded shadow-sm font-mono">$C(-2, 0, 0)$</span>
+                    <span class="bg-slate-100 px-3 py-1 rounded shadow-sm font-mono">$P(0, 0, \\sqrt{2})$</span>
+                    <span class="bg-slate-100 px-3 py-1 rounded shadow-sm font-mono">$E(-1, \\sqrt{3}, 0)$</span>
+                </div>
+                <p class="text-sm mt-3 text-eduBlue"><i class="fas fa-info-circle"></i> 提示：注意3D模型中已经为你显示了坐标轴（红X, 绿Y, 蓝Z）。</p>
+            `,
+            onRender: () => { showAxes(); highlightPCE(); }
+        },
+        {
+            title: "终局：求解二面角余弦值",
+            icon: "fa-flag-checkered",
+            color: "eduGreen",
+            content: `
+                <div class="text-sm space-y-3">
+                    <p><b>① 求平面 BPC 的法向量 $\\vec{m} = (x,y,z)$：</b><br>
+                    $\\vec{BP}=(-1,-\\sqrt{3},\\sqrt{2})$, $\\vec{PC}=(-2,0,-\\sqrt{2})$<br>
+                    联立方程解得：$\\vec{m} = (1, -\\sqrt{3}, -\\sqrt{2})$</p>
+                    
+                    <p><b>② 求平面 PCE 的法向量 $\\vec{n} = (p,q,r)$：</b><br>
+                    $\\vec{CE}=(1,\\sqrt{3},0)$, $\\vec{PC}=(-2,0,-\\sqrt{2})$<br>
+                    联立方程解得：$\\vec{n} = (1, -\\frac{\\sqrt{3}}{3}, -\\sqrt{2})$</p>
+                    
+                    <div class="bg-green-50 p-4 rounded-xl border-2 border-green-200 mt-4 text-center">
+                        <div class="font-bold text-slate-700 mb-2">代入夹角公式计算得：</div>
+                        <div class="text-lg">
+                            $\\cos\\langle \\vec{m}, \\vec{n} \\rangle = \\frac{\\vec{m} \\cdot \\vec{n}}{|\\vec{m}||\\vec{n}|} = \\frac{2\\sqrt{5}}{5}$
+                        </div>
+                    </div>
+                </div>
+            `,
+            onRender: () => { highlightBothPlanes(); }
+        }
+    ];
+
+    let currentStep = 0;
+
+    function nextStep() {
+        if (currentStep >= stepsData.length) {
+            const btn = document.getElementById('next-btn');
+            btn.innerHTML = '<i class="fas fa-check"></i> 推演完成';
+            btn.className = "bg-slate-400 text-white px-6 py-2.5 rounded-xl font-bold cursor-not-allowed flex items-center gap-2";
+            return;
+        }
+
+        const step = stepsData[currentStep];
+        const container = document.getElementById('steps-container');
+
+        // 构建卡片HTML
+        let colorClass = `text-${step.color}`;
+        if(step.color === 'eduBlue') colorClass = 'text-[#4285F4]';
+        if(step.color === 'eduGreen') colorClass = 'text-[#34A853]';
+        if(step.color === 'eduRed') colorClass = 'text-[#EA4335]';
+        if(step.color === 'eduYellow') colorClass = 'text-[#FBBC05]';
+
+        const cardHTML = `
+            <div class="bg-white rounded-xl shadow-md p-5 border-t-4 border-${step.color.replace('edu', '').toLowerCase()}-500 animate-fade-in-up">
+                <h3 class="font-bold text-lg mb-3 flex items-center gap-2 ${colorClass}">
+                    <span class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 shadow-sm">
+                        <i class="fas ${step.icon}"></i>
+                    </span>
+                    步骤 ${currentStep + 1}：${step.title}
+                </h3>
+                <div class="text-slate-700 leading-relaxed">
+                    ${step.content}
+                </div>
+            </div>
+        `;
+
+        // 插入并滚动
+        container.insertAdjacentHTML('beforeend', cardHTML);
+        setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+        }, 100);
+
+        // 触发 MathJax 渲染公式（必须检查函数是否存在，因为async加载可能尚未完成）
+        if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+            MathJax.typesetPromise([container]);
+        }
+
+        // 触发对应的 3D 交互钩子
+        if (step.onRender) {
+            step.onRender();
+        }
+
+        currentStep++;
+
+        if (currentStep >= stepsData.length) {
+            const btn = document.getElementById('next-btn');
+            btn.innerHTML = '<i class="fas fa-check"></i> 推演完成';
+            btn.classList.remove('bg-eduBlue', 'hover:bg-blue-600', 'hover:-translate-y-0.5');
+            btn.classList.add('bg-slate-400', 'cursor-not-allowed');
+        }
+    }
+
+
+    // ==========================================
+    // 2. Three.js 3D 建模与交互逻辑
+    // ==========================================
+    const container = document.getElementById('canvas-container');
+    let scene, camera, renderer, controls;
+    const labels = [];
+    let axesHelper;
+    let planePCE, planeBPC; // 缓存面对象以便高亮
+
+    initThree();
+    animate();
+
+    function initThree() {
+        // 场景与相机
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xffffff);
+        
+        // ⚠️ 容器尺寸检查（防止高度塌陷为0导致空白）
+        let cWidth = container.clientWidth || container.offsetWidth || 800;
+        let cHeight = container.clientHeight || container.offsetHeight || 600;
+        if (cHeight <= 0) {
+            container.style.height = '100%';
+            cHeight = container.clientHeight;
+            if (cHeight <= 0) {
+                container.style.height = '60vh';
+                cHeight = container.clientHeight || 400;
+            }
+        }
+        
+        // 数学习惯：Z轴朝上。所以改变相机up向量
+        camera = new THREE.PerspectiveCamera(45, cWidth / cHeight, 0.1, 100);
+        camera.up.set(0, 0, 1); 
+        resetCamera();
+
+        // 渲染器
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cWidth, cHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // 控制器
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(0, 0, 0);
+
+        // 材质定义
+        const matLineDark = new THREE.LineBasicMaterial({ color: 0x334155, linewidth: 2 });
+        const matLineBlue = new THREE.LineBasicMaterial({ color: 0x4285F4, linewidth: 2 });
+        const matLineDashed = new THREE.LineDashedMaterial({ color: 0x94A3B8, dashSize: 0.2, gapSize: 0.1 });
+
+        // 数据点坐标设定 (r=2)
+        const r = 2;
+        const pts = {
+            O: new THREE.Vector3(0, 0, 0),
+            C: new THREE.Vector3(-r, 0, 0),
+            A: new THREE.Vector3(r/2, -r*Math.sqrt(3)/2, 0), // 1, -1.732, 0
+            B: new THREE.Vector3(r/2, r*Math.sqrt(3)/2, 0),  // 1, 1.732, 0
+            E: new THREE.Vector3(-r/2, r*Math.sqrt(3)/2, 0), // -1, 1.732, 0
+            D: new THREE.Vector3(0, 0, r*Math.sqrt(3)),      // 0, 0, 3.464
+            P: new THREE.Vector3(0, 0, r*Math.sqrt(2)/2)     // 0, 0, 1.414
+        };
+
+        // 1. 画底面圆 (只画边缘线，淡淡的)
+        const circleGeo = new THREE.BufferGeometry();
+        const circlePts = [];
+        for (let i = 0; i <= 64; i++) {
+            const theta = (i / 64) * Math.PI * 2;
+            circlePts.push(r * Math.cos(theta), r * Math.sin(theta), 0);
+        }
+        circleGeo.setAttribute('position', new THREE.Float32BufferAttribute(circlePts, 3));
+        const circleLine = new THREE.Line(circleGeo, new THREE.LineBasicMaterial({color: 0xCBD5E1}));
+        scene.add(circleLine);
+
+        // 2. 辅助构建线段的函数
+        function addLine(v1, v2, material) {
+            const geo = new THREE.BufferGeometry().setFromPoints([v1, v2]);
+            const line = new THREE.Line(geo, material);
+            if(material.isLineDashedMaterial) line.computeLineDistances();
+            scene.add(line);
+        }
+
+        // 画外轮廓圆锥虚线 (示例几条母线)
+        addLine(pts.D, new THREE.Vector3(r,0,0), matLineDashed);
+        addLine(pts.D, new THREE.Vector3(0,r,0), matLineDashed);
+        addLine(pts.D, new THREE.Vector3(0,-r,0), matLineDashed);
+        addLine(pts.D, pts.C, matLineDashed);
+
+        // 画底面正三角形 ABC
+        addLine(pts.A, pts.B, matLineDark);
+        addLine(pts.B, pts.C, matLineDark);
+        addLine(pts.C, pts.A, matLineDashed); // 视线遮挡用虚线模拟
+
+        // 画直径 AE 和 高 DO
+        addLine(pts.A, pts.E, matLineDashed);
+        addLine(pts.D, pts.O, matLineDashed);
+
+        // 画正三棱锥核心线 P-ABC
+        addLine(pts.P, pts.A, matLineBlue);
+        addLine(pts.P, pts.B, matLineBlue);
+        addLine(pts.P, pts.C, matLineBlue);
+
+        // 连接 CE
+        addLine(pts.C, pts.E, matLineDark);
+
+        // 创建高亮面 BPC (半透明黄)
+        const geoBPC = new THREE.BufferGeometry().setFromPoints([pts.B, pts.P, pts.C]);
+        planeBPC = new THREE.Mesh(geoBPC, new THREE.MeshBasicMaterial({ color: 0xFBBC05, side: THREE.DoubleSide, transparent: true, opacity: 0, depthWrite: false }));
+        scene.add(planeBPC);
+
+        // 创建高亮面 PCE (半透明绿)
+        const geoPCE = new THREE.BufferGeometry().setFromPoints([pts.P, pts.C, pts.E]);
+        planePCE = new THREE.Mesh(geoPCE, new THREE.MeshBasicMaterial({ color: 0x34A853, side: THREE.DoubleSide, transparent: true, opacity: 0, depthWrite: false }));
+        scene.add(planePCE);
+
+        // 添加HTML标签
+        addLabel('A', pts.A);
+        addLabel('B', pts.B);
+        addLabel('C', pts.C);
+        addLabel('D', pts.D);
+        addLabel('E', pts.E);
+        addLabel('O', pts.O);
+        addLabel('P', pts.P);
+
+        // 坐标轴辅助 (默认隐藏，Step 4 显示)
+        axesHelper = new THREE.AxesHelper(3.5);
+        axesHelper.visible = false;
+        scene.add(axesHelper);
+
+        // 监听窗口大小变化
+        window.addEventListener('resize', onWindowResize, false);
+    }
+
+    function addLabel(text, pos) {
+        const div = document.createElement('div');
+        div.className = 'scene-label';
+        div.innerHTML = text;
+        // 给特定点上色强调
+        if(text==='P') div.style.color = '#EA4335';
+        if(text==='O') div.style.color = '#94A3B8';
+        container.appendChild(div);
+        labels.push({ elem: div, pos: pos });
+    }
+
+    function updateLabels() {
+        labels.forEach(label => {
+            const vector = label.pos.clone();
+            vector.project(camera);
+            // 转换为屏幕坐标
+            const x = (vector.x * 0.5 + 0.5) * container.clientWidth;
+            const y = (vector.y * -0.5 + 0.5) * container.clientHeight;
+            
+            if (vector.z > 1) { // 剔除在相机背后的点
+                label.elem.style.opacity = '0';
+            } else {
+                label.elem.style.opacity = '1';
+                label.elem.style.left = `${x}px`;
+                label.elem.style.top = `${y}px`;
+            }
+        });
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+        updateLabels();
+    }
+
+    function onWindowResize() {
+        if(!container) return;
+        // ⚠️ 同样需要容器尺寸检查
+        let w = container.clientWidth || container.offsetWidth;
+        let h = container.clientHeight || container.offsetHeight;
+        if (h <= 0) {
+            container.style.height = '100%';
+            h = container.clientHeight;
+            if (h <= 0) {
+                container.style.height = '60vh';
+                h = container.clientHeight || 400;
+            }
+        }
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
+
+    // --- 视角与交互控制函数 ---
+    function resetCamera() {
+        // 侧上方俯视，能清晰看到P点和底面
+        camera.position.set(4, -5, 4);
+        if(controls) controls.target.set(0, 0, 1);
+    }
+
+    function topViewCamera() {
+        // 正上方俯视底面，体现建系原理
+        camera.position.set(0, 0.1, 7); // y给个微小偏移防止up轴奇异
+        if(controls) controls.target.set(0, 0, 0);
+    }
+
+    // 步骤相关的模型特效
+    function showAxes() {
+        axesHelper.visible = true;
+        topViewCamera(); // 自动切换到俯视帮助理解坐标系
+    }
+
+    function highlightPCE() {
+        planePCE.material.opacity = 0.4;
+    }
+
+    function highlightBothPlanes() {
+        resetCamera();
+        planeBPC.material.opacity = 0.4;
+        planePCE.material.opacity = 0.4;
+    }
+
+</script>
+</body>
+</html>

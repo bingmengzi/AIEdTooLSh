@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>探索几何：切线与相似三角形 - 互动课堂</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        eduBlue: '#4285F4',
+                        eduRed: '#EA4335',
+                        eduYellow: '#FBBC05',
+                        eduGreen: '#34A853',
+                        bgLight: '#F5F7FB'
+                    },
+                    fontFamily: {
+                        sans: ['"Microsoft YaHei"', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 隐藏滚动条，保持课堂界面干净 */
+        body { margin: 0; padding: 0; background-color: #F5F7FB; overflow-x: hidden; }
+        canvas { 
+            touch-action: none; /* 防止移动端拖拽画布时页面滚动 */
+            cursor: grab;
+        }
+        canvas:active { cursor: grabbing; }
+        .step-card { transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4 md:p-6 text-gray-800">
+
+    <!-- 顶部标题 -->
+    <header class="w-full max-w-6xl flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-eduBlue text-white flex items-center justify-center text-2xl shadow-lg shadow-blue-200">
+                <i class="fa-solid fa-shapes"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">切线与相似三角形的证明</h1>
+                <p class="text-gray-500 text-sm mt-1">拖动图形，观察角度关系</p>
+            </div>
+        </div>
+        <div class="hidden md:flex gap-2">
+            <span class="px-3 py-1 rounded-full bg-blue-100 text-eduBlue text-sm font-bold">九年级数学</span>
+            <span class="px-3 py-1 rounded-full bg-green-100 text-eduGreen text-sm font-bold">几何综合</span>
+        </div>
+    </header>
+
+    <!-- 主体内容区：左右分栏 -->
+    <main class="w-full max-w-6xl flex flex-col lg:flex-row gap-6">
+        
+        <!-- 左侧：交互画板 -->
+        <div class="w-full lg:w-[60%] flex flex-col gap-4">
+            <div class="bg-white rounded-2xl shadow-md p-4 flex-1 relative flex flex-col items-center">
+                <!-- 状态提示标签 -->
+                <div class="absolute top-4 left-4 bg-yellow-50 border border-eduYellow text-yellow-700 px-4 py-2 rounded-lg shadow-sm text-sm font-bold flex items-center gap-2 z-10">
+                    <i class="fa-solid fa-hand-pointer animate-bounce"></i>
+                    请拖动点 C 改变位置
+                </div>
+                
+                <!-- Canvas 容器 -->
+                <div class="w-full aspect-[4/3] bg-[#FAFAF5] rounded-xl border border-gray-100 overflow-hidden flex items-center justify-center relative">
+                    <canvas id="geometryCanvas" width="800" height="600" class="w-full h-full object-contain"></canvas>
+                </div>
+                
+                <div class="w-full mt-4 flex justify-around text-sm text-gray-500 font-medium">
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-gray-400"></span> 直径 AB</span>
+                    <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-eduRed"></span> 切线 CD</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：教学推导面板 -->
+        <div class="w-full lg:w-[40%] bg-white rounded-2xl shadow-md flex flex-col">
+            
+            <!-- 题目已知条件 -->
+            <div class="p-6 border-b border-gray-100 bg-blue-50/50 rounded-t-2xl">
+                <h2 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-eduBlue"></i> 题目描述
+                </h2>
+                <p class="text-gray-700 leading-relaxed text-[15px]">
+                    如图，<strong class="text-eduBlue">AB</strong> 是 ⊙O 的直径，点 <strong class="text-eduBlue">C</strong> 在圆上，过点 C 作 ⊙O 的<strong class="text-eduRed">切线</strong>交 AB 延长线于点 <strong class="text-eduBlue">D</strong>，连接 AC、BC。
+                    <br><br>
+                    <strong>求证：</strong> <strong class="text-lg">△ACD ∽ △CBD</strong>
+                </p>
+            </div>
+
+            <!-- 证明步骤列表 -->
+            <div class="p-6 flex-1 flex flex-col gap-4 overflow-y-auto" id="stepsContainer">
+                
+                <div class="step-card border-2 border-gray-100 rounded-xl p-4 opacity-50 transition-all" data-step="1">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-bold step-num">1</span>
+                        <h3 class="font-bold text-gray-700 step-title">寻找等角：弦切角</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 pl-11">
+                        ∵ CD 是切线，C 是切点<br>
+                        ∴ <strong class="text-eduGreen">∠DCB = ∠CAB</strong> (弦切角定理)
+                    </p>
+                </div>
+
+                <div class="step-card border-2 border-gray-100 rounded-xl p-4 opacity-50 transition-all" data-step="2">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-bold step-num">2</span>
+                        <h3 class="font-bold text-gray-700 step-title">寻找等角：公共角</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 pl-11">
+                        在 △ACD 和 △CBD 中<br>
+                        <strong class="text-eduYellow">∠D = ∠D</strong> (公共角)
+                    </p>
+                </div>
+
+                <div class="step-card border-2 border-gray-100 rounded-xl p-4 opacity-50 transition-all" data-step="3">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-bold step-num">3</span>
+                        <h3 class="font-bold text-gray-700 step-title">得出结论</h3>
+                    </div>
+                    <p class="text-sm text-gray-600 pl-11">
+                        ∵ 有两组对应角相等 (AA)<br>
+                        ∴ <strong class="text-eduBlue text-lg">△ACD ∽ △CBD</strong>
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- 底部控制按钮 -->
+            <div class="p-5 border-t border-gray-100 flex justify-between items-center bg-gray-50 rounded-b-2xl">
+                <button id="btnPrev" class="px-6 py-3 rounded-xl font-bold text-gray-600 bg-white border border-gray-200 hover:bg-gray-100 disabled:opacity-50 transition-colors shadow-sm">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> 上一步
+                </button>
+                <div class="text-sm font-bold text-gray-400">
+                    <span id="stepCounter">0</span> / 3
+                </div>
+                <button id="btnNext" class="px-6 py-3 rounded-xl font-bold text-white bg-eduBlue hover:bg-blue-600 disabled:opacity-50 transition-colors shadow-md shadow-blue-200">
+                    下一步 <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const canvas = document.getElementById('geometryCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // --- 几何模型与状态参数 ---
+        let width, height;
+        let cx, cy, R; // 圆心和半径
+        let currentStep = 0;
+        let isDragging = false;
+        
+        // 点 C 的位置由角度决定 (极坐标)，限制在第一象限(右上角)，这样D点总在右侧
+        // -90度在正上方，0度在正右方。我们限制在 -75度 到 -15度 之间。
+        let angleC_deg = -45; 
+        
+        // 关键点坐标
+        let ptO, ptA, ptB, ptC, ptD;
+
+        // --- 初始化与尺寸自适应 ---
+        function init() {
+            // 设置内部绘图分辨率 (固定高宽比，CSS控制显示大小)
+            width = canvas.width;
+            height = canvas.height;
+            
+            // 设定圆的基准位置：圆心偏左，给右侧的切线交点D留空间
+            cx = width * 0.35;
+            cy = height * 0.6;
+            R = width * 0.2;
+            
+            calculatePoints();
+            updateUI();
+            draw();
+
+            // 绑定事件
+            canvas.addEventListener('mousedown', handlePointerDown);
+            canvas.addEventListener('mousemove', handlePointerMove);
+            window.addEventListener('mouseup', handlePointerUp);
+            
+            // 触摸支持
+            canvas.addEventListener('touchstart', handlePointerDown, {passive: false});
+            canvas.addEventListener('touchmove', handlePointerMove, {passive: false});
+            window.addEventListener('touchend', handlePointerUp);
+
+            // 按钮事件
+            document.getElementById('btnNext').addEventListener('click', () => {
+                if(currentStep < 3) { currentStep++; updateUI(); draw(); }
+            });
+            document.getElementById('btnPrev').addEventListener('click', () => {
+                if(currentStep > 0) { currentStep--; updateUI(); draw(); }
+            });
+        }
+
+        // --- 数学计算 ---
+        function calculatePoints() {
+            let rad = angleC_deg * Math.PI / 180;
+            
+            ptO = { x: cx, y: cy };
+            ptA = { x: cx - R, y: cy };
+            ptB = { x: cx + R, y: cy };
+            
+            // 点C坐标
+            ptC = {
+                x: cx + R * Math.cos(rad),
+                y: cy + R * Math.sin(rad)
+            };
+            
+            // 计算交点 D
+            // 直线 AB 方程：y = cy
+            // 过 C 点的切线方程：垂直于 OC。OC 斜率 k1 = sin/cos = tan(rad)
+            // 切线斜率 k2 = -1/tan(rad) = -cot(rad)
+            // y - C.y = k2 * (x - C.x)
+            // 代入 y = cy，求 x (即 D.x)
+            // cy - (cy + R*sin) = -cos/sin * (x - (cx + R*cos))
+            // -R*sin = -cos/sin * (x - cx - R*cos)
+            // R*sin^2 = cos * (x - cx) - R*cos^2
+            // R = cos * (x - cx)
+            // x = cx + R / cos(rad)
+            
+            ptD = {
+                x: cx + R / Math.cos(rad),
+                y: cy
+            };
+        }
+
+        // --- 核心绘图逻辑 ---
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // 1. 画基础圆和直径
+            ctx.beginPath();
+            ctx.arc(cx, cy, R, 0, Math.PI * 2);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#94A3B8'; // 灰蓝色
+            ctx.stroke();
+
+            // 直线 AD (包含直径AB和延长线BD)
+            drawLine(ptA, ptD, '#94A3B8', 3);
+            
+            // 2. 根据步骤画连接线和高亮
+            // 画切线 CD
+            drawLine(ptC, ptD, '#EA4335', 3); // 红色强调切线
+            
+            // 画辅助连接线 AC, BC
+            drawLine(ptA, ptC, '#64748B', 2);
+            drawLine(ptB, ptC, '#64748B', 2);
+
+            // 步骤1：高亮弦切角 ∠DCB 和圆周角 ∠CAB
+            if (currentStep >= 1) {
+                // ∠CAB
+                drawAngleArc(ptA, ptB, ptC, 40, 'rgba(52, 168, 83, 0.3)', '#34A853');
+                // ∠DCB
+                drawAngleArc(ptC, ptB, ptD, 40, 'rgba(52, 168, 83, 0.3)', '#34A853');
+            }
+
+            // 步骤2：高亮公共角 ∠D
+            if (currentStep >= 2) {
+                drawAngleArc(ptD, ptA, ptC, 35, 'rgba(251, 188, 5, 0.4)', '#FBBC05');
+            }
+            
+            // 步骤3：高亮三角形面
+            if (currentStep >= 3) {
+                // 填充三角形 CBD
+                ctx.beginPath();
+                ctx.moveTo(ptC.x, ptC.y);
+                ctx.lineTo(ptB.x, ptB.y);
+                ctx.lineTo(ptD.x, ptD.y);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(66, 133, 244, 0.15)'; // 浅蓝色
+                ctx.fill();
+                
+                // 绘制 △ACD 外框加粗
+                ctx.beginPath();
+                ctx.moveTo(ptA.x, ptA.y);
+                ctx.lineTo(ptC.x, ptC.y);
+                ctx.lineTo(ptD.x, ptD.y);
+                ctx.closePath();
+                ctx.strokeStyle = '#4285F4';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+
+            // 3. 画点和字母
+            drawPoint(ptO, 'O', 'bottom', '#64748B');
+            drawPoint(ptA, 'A', 'bottom');
+            drawPoint(ptB, 'B', 'bottom-right');
+            // C点加大，提示可拖动
+            drawPoint(ptC, 'C', 'top', '#FBBC05', 8, true); 
+            drawPoint(ptD, 'D', 'bottom');
+            
+            // 画直角符号 (∠ACB 永远是 90度，因为AB是直径)
+            drawRightAngle(ptC, ptA, ptB);
+        }
+
+        // --- 绘图辅助工具函数 ---
+        function drawLine(p1, p2, color, width) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.stroke();
+        }
+
+        function drawPoint(p, label, labelPos = 'bottom', color = '#334155', radius = 5, hasPulse = false) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            if(hasPulse) {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, radius + 4, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(251, 188, 5, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#1E293B';
+            ctx.font = 'bold 22px "Microsoft YaHei"';
+            let offsetX = 0, offsetY = 0;
+            const dist = 18;
+            if (labelPos === 'bottom') { offsetY = dist + 10; offsetX = -8;}
+            else if (labelPos === 'top') { offsetY = -dist; offsetX = -8; }
+            else if (labelPos === 'bottom-right') { offsetY = dist + 10; offsetX = 5;}
+            ctx.fillText(label, p.x + offsetX, p.y + offsetY);
+        }
+
+        // 绘制夹角扇形标记
+        function drawAngleArc(vertex, p1, p2, radius, fillColor, strokeColor) {
+            let ang1 = Math.atan2(p1.y - vertex.y, p1.x - vertex.x);
+            let ang2 = Math.atan2(p2.y - vertex.y, p2.x - vertex.x);
+            
+            // 确保总是画较小的角
+            let diff = ang2 - ang1;
+            while (diff <= -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            
+            let start = ang1;
+            let end = ang1 + diff;
+            
+            if (diff < 0) {
+                start = ang1 + diff;
+                end = ang1;
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(vertex.x, vertex.y);
+            ctx.arc(vertex.x, vertex.y, radius, start, end);
+            ctx.closePath();
+            ctx.fillStyle = fillColor;
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(vertex.x, vertex.y, radius, start, end);
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
+        // 绘制直角符号
+        function drawRightAngle(vertex, p1, p2) {
+            const size = 15;
+            let ang1 = Math.atan2(p1.y - vertex.y, p1.x - vertex.x);
+            let ang2 = Math.atan2(p2.y - vertex.y, p2.x - vertex.x);
+            
+            let dx1 = size * Math.cos(ang1), dy1 = size * Math.sin(ang1);
+            let dx2 = size * Math.cos(ang2), dy2 = size * Math.sin(ang2);
+            
+            ctx.beginPath();
+            ctx.moveTo(vertex.x + dx1, vertex.y + dy1);
+            ctx.lineTo(vertex.x + dx1 + dx2, vertex.y + dy1 + dy2);
+            ctx.lineTo(vertex.x + dx2, vertex.y + dy2);
+            ctx.strokeStyle = '#94A3B8';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
+        // --- 交互逻辑 ---
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX, clientY;
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+                if(e.type !== 'touchstart') e.preventDefault(); // 阻止滑动页面
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            // 考虑 canvas CSS 缩放
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            return {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+        function handlePointerDown(e) {
+            const pos = getPointerPos(e);
+            // 检查是否点中 C 点附近 (给大一点的判定半径)
+            const dist = Math.hypot(pos.x - ptC.x, pos.y - ptC.y);
+            if (dist < 40) {
+                isDragging = true;
+            }
+        }
+
+        function handlePointerMove(e) {
+            if (!isDragging) return;
+            const pos = getPointerPos(e);
+            
+            // 计算鼠标相对于圆心的角度
+            let rad = Math.atan2(pos.y - cy, pos.x - cx);
+            let deg = rad * 180 / Math.PI;
+            
+            // 限制角度范围，保证图形在合理可视范围内
+            // 我们希望C在右上角，切线交点D在正右方
+            if (deg < -80) deg = -80;
+            if (deg > -15 && deg < 90) deg = -15; 
+            if (deg >= 90 || deg < -180) deg = -80; // 防止越界乱飘
+            
+            angleC_deg = deg;
+            calculatePoints();
+            draw();
+        }
+
+        function handlePointerUp() {
+            isDragging = false;
+        }
+
+        // --- UI 更新 ---
+        function updateUI() {
+            document.getElementById('stepCounter').innerText = currentStep;
+            document.getElementById('btnPrev').disabled = currentStep === 0;
+            
+            const btnNext = document.getElementById('btnNext');
+            if (currentStep === 3) {
+                btnNext.innerHTML = '<i class="fa-solid fa-rotate-right mr-1"></i> 重置';
+                btnNext.classList.replace('bg-eduBlue', 'bg-eduGreen');
+                btnNext.classList.replace('hover:bg-blue-600', 'hover:bg-green-600');
+                btnNext.classList.replace('shadow-blue-200', 'shadow-green-200');
+                btnNext.onclick = () => { currentStep = 0; updateUI(); draw(); };
+            } else {
+                btnNext.innerHTML = '下一步 <i class="fa-solid fa-arrow-right ml-1"></i>';
+                btnNext.classList.replace('bg-eduGreen', 'bg-eduBlue');
+                btnNext.classList.replace('hover:bg-green-600', 'hover:bg-blue-600');
+                btnNext.classList.replace('shadow-green-200', 'shadow-blue-200');
+                btnNext.onclick = null; // 恢复默认监听器逻辑
+            }
+
+            // 更新步骤卡片样式
+            const cards = document.querySelectorAll('.step-card');
+            cards.forEach(card => {
+                const stepNum = parseInt(card.getAttribute('data-step'));
+                const numIcon = card.querySelector('.step-num');
+                const title = card.querySelector('.step-title');
+                
+                // 重置状态
+                card.classList.remove('border-eduBlue', 'bg-blue-50', 'opacity-100', 'scale-105', 'shadow-md');
+                card.classList.add('border-gray-100', 'opacity-50');
+                numIcon.classList.remove('bg-eduBlue', 'text-white');
+                numIcon.classList.add('bg-gray-200', 'text-gray-600');
+                title.classList.remove('text-eduBlue');
+                
+                // 激活当前步骤
+                if (stepNum === currentStep) {
+                    card.classList.remove('border-gray-100', 'opacity-50');
+                    card.classList.add('border-eduBlue', 'bg-blue-50/40', 'opacity-100', 'scale-[1.02]', 'shadow-md');
+                    numIcon.classList.remove('bg-gray-200', 'text-gray-600');
+                    numIcon.classList.add('bg-eduBlue', 'text-white');
+                    title.classList.add('text-eduBlue');
+                } 
+                // 已经过去的步骤
+                else if (stepNum < currentStep) {
+                    card.classList.remove('opacity-50');
+                    card.classList.add('opacity-80');
+                    numIcon.classList.remove('bg-gray-200', 'text-gray-600');
+                    numIcon.classList.add('bg-green-500', 'text-white'); // 完成标记为绿色
+                    numIcon.innerHTML = '<i class="fa-solid fa-check text-sm"></i>';
+                }
+                
+                // 恢复未完成数字
+                if(stepNum >= currentStep) {
+                    numIcon.innerHTML = stepNum;
+                }
+            });
+        }
+
+        // 启动应用
+        window.onload = init;
+    </script>
+</body>
+</html>

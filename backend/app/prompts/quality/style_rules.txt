@@ -1,0 +1,277 @@
+# 视觉风格规范
+
+所有页面**必须**遵循统一的视觉设计语言，确保教育内容的专业性和亲和力。
+
+---
+
+## 一、核心色彩方案（Google Material 四色）
+
+| 用途 | 色码 | Tailwind | 说明 |
+|------|------|----------|------|
+| 主色/主曲线 | `#4285F4` | blue-500 | Google Blue，用于主要图形、链接、选中状态 |
+| 强调/焦点 | `#EA4335` | red-500 | Google Red，用于重点、焦点、可拖拽元素 |
+| 辅助/成功 | `#34A853` | green-500 | Google Green，用于辅助线、正确状态 |
+| 高亮/动画 | `#FBBC05` | yellow-500 | Google Yellow，用于动画点、高亮提示 |
+
+### Canvas 绘图色彩常量
+
+```javascript
+const COLORS = {
+    primary: '#4285F4',    // 主色蓝
+    accent: '#EA4335',     // 强调红
+    secondary: '#34A853',  // 辅助绿
+    highlight: '#FBBC05',  // 高亮黄
+    grid: '#f0f0f0',       // 网格线
+    axis: '#cbd5e1',       // 坐标轴
+    text: '#64748b',       // 文字标签
+    background: '#F5F7FB'  // 页面背景
+};
+```
+
+---
+
+## 二、页面背景色
+
+**强制使用护眼背景色**：
+
+```css
+body {
+    background-color: #F5F7FB;  /* 护眼浅蓝灰 - 首选 */
+}
+```
+
+可选替代色：
+- 浅粉：`#FFF0F3`
+- 浅青绿：`#F0F7F4`
+
+---
+
+## 三、关键点的光晕效果（必须实现）
+
+所有可交互的关键点（焦点、顶点等）必须有光晕效果：
+
+```javascript
+function drawKeyPoint(x, y, color, label, coords) {
+    const pos = toScreen(x, y, coords);
+    
+    // 1. 光晕效果（RadialGradient）
+    const gradient = ctx.createRadialGradient(pos.x, pos.y, 2, pos.x, pos.y, 15);
+    gradient.addColorStop(0, 'rgba(234, 67, 53, 0.4)');  // 内圈半透明
+    gradient.addColorStop(1, 'rgba(234, 67, 53, 0)');    // 外圈完全透明
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 2. 实心点
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 3. 文字标签
+    ctx.fillStyle = color;
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText(label, pos.x + 10, pos.y - 10);
+}
+```
+
+---
+
+## 四、虚线样式
+
+统一使用 `setLineDash([8, 8])` 模式：
+
+```javascript
+function drawDashedLine(x1, y1, x2, y2, color, coords) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.setLineDash([8, 8]);  // 统一虚线样式
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    // ...
+    ctx.stroke();
+    ctx.restore();  // 恢复实线状态
+}
+```
+
+---
+
+## 五、Tailwind CSS 常用类
+
+### 圆角
+- 小元素：`rounded-lg` (8px)
+- 卡片：`rounded-xl` (12px) 或 `rounded-2xl` (16px)
+- 大容器：`rounded-3xl` (24px)
+
+### 阴影
+- 轻度：`shadow-sm`
+- **卡片默认**：`shadow-md`
+- 突出：`shadow-lg`
+- Canvas区域：`shadow-lg`
+
+### 边框
+- 细边框：`border border-gray-100`
+- 强调边框：`border-2 border-blue-500`
+
+---
+
+## 六、卡片式布局
+
+### 标准卡片
+```html
+<div class="bg-white rounded-xl shadow-md p-5">
+    <div class="border-b border-gray-100 pb-3 mb-4">
+        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-yellow-500"></i>
+            卡片标题
+        </h2>
+    </div>
+    <!-- 内容 -->
+</div>
+```
+
+### 知识点卡片（渐变背景）
+```html
+<div class="bg-gradient-to-br from-indigo-50 to-white rounded-xl shadow-md p-5 border border-indigo-100">
+    <h2 class="text-lg font-bold text-indigo-800 mb-3 flex items-center gap-2">
+        <i class="fa-regular fa-lightbulb"></i>
+        核心知识点
+    </h2>
+    <ul class="space-y-3 text-sm text-gray-600">
+        <li class="flex items-start gap-2">
+            <span class="mt-1 w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+            <span><b class="text-gray-800">要点1：</b> 说明内容</span>
+        </li>
+    </ul>
+</div>
+```
+
+---
+
+## 七、页面头部设计
+
+```html
+<header class="flex items-center justify-between bg-white rounded-xl shadow-md px-6 py-4 h-auto md:h-20 shrink-0">
+    <div class="flex items-center gap-3">
+        <!-- 图标徽章 -->
+        <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+            <i class="fa-solid fa-shapes text-xl"></i>
+        </div>
+        <!-- 标题 -->
+        <div>
+            <h1 class="text-xl md:text-2xl font-bold text-gray-800">主标题</h1>
+            <p class="text-xs md:text-sm text-gray-500">副标题说明文字</p>
+        </div>
+    </div>
+    <!-- 操作按钮 -->
+    <div class="hidden md:flex gap-2">
+        <button class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition text-sm font-medium">
+            <i class="fa-solid fa-rotate-right mr-1"></i> 重置
+        </button>
+    </div>
+</header>
+```
+
+---
+
+## 八、字体规范
+
+### 字体栈
+```css
+body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+```
+
+### 字号层级
+- 大标题：`text-xl md:text-2xl font-bold`
+- 小标题：`text-lg font-bold`
+- 正文：`text-sm`
+- 辅助文字：`text-xs text-gray-400`
+- **Canvas 标签**：`bold 14px Arial`
+- **Canvas 小标签**：`12px Arial`
+
+---
+
+## 九、Font Awesome 图标
+
+### 常用图标
+| 场景 | 图标 | 代码 |
+|------|------|------|
+| 数学/几何 | 形状 | `fa-solid fa-shapes` |
+| 物理/光学 | 灯泡 | `fa-regular fa-lightbulb` |
+| 参数控制 | 滑块 | `fa-solid fa-sliders` |
+| 重置 | 旋转 | `fa-solid fa-rotate-right` |
+| 交互提示 | 手指 | `fa-solid fa-hand-pointer` |
+| 方向 | 箭头 | `fa-solid fa-arrow-right/up` |
+
+### 图标+文字组合
+```html
+<div class="flex items-center gap-2">
+    <i class="fa-solid fa-shapes text-blue-500"></i>
+    <span>几何图形</span>
+</div>
+```
+
+---
+
+## 十、滑块样式（必须自定义）
+
+```css
+input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    background: transparent;
+}
+
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 24px;
+    width: 24px;
+    border-radius: 50%;
+    background: #4285F4;  /* 主色蓝 */
+    cursor: pointer;
+    margin-top: -10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: #E0E7FF;  /* 浅蓝轨道 */
+    border-radius: 2px;
+}
+```
+
+---
+
+## 十一、响应式布局
+
+```html
+<!-- 移动端垂直堆叠，桌面端左右布局 -->
+<main class="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
+    <!-- Canvas 区域，自动扩展 -->
+    <section class="flex-1">…</section>
+    
+    <!-- 控制面板，固定宽度 -->
+    <aside class="w-full lg:w-80">…</aside>
+</main>
+```
+
+---
+
+## 十二、禁止的样式
+
+- ❌ 不要使用纯黑色 `#000000`，用 `#1e293b` 或 `#374151`
+- ❌ 不要使用默认的 serif 字体
+- ❌ 不要使用过于鲜艳刺眼的纯色大面积填充
+- ❌ 不要使用过小的字号（< 12px）
+- ❌ 不要使用默认的 HTML 滑块样式（必须自定义）

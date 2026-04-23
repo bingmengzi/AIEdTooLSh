@@ -1,0 +1,438 @@
+# Canvas 2D 交互场景 - 完整代码参考
+
+以下是一个**完整可运行**的 Canvas 2D 交互场景核心代码。生成新场景时，**必须参考此代码的结构和实现方式**，替换为对应主题的数学/物理逻辑。
+
+**严禁：留空函数体、使用未定义变量、参数默认值为0**
+
+---
+
+## 1. 颜色常量（必须定义在脚本开头）
+
+```javascript
+const COLORS = {
+    primary: '#4285F4',     // 蓝色 - 主曲线
+    accent: '#EA4335',      // 红色 - 焦点/关键点
+    secondary: '#64748b',   // 灰色 - 准线/辅助线
+    success: '#34A853',     // 绿色 - 辅助标注
+    warning: '#FBBC05',     // 黄色 - 动画点
+    grid: '#f0f0f0',        // 网格线
+    axis: '#cbd5e1'         // 坐标轴
+};
+```
+
+---
+
+## 2. 状态对象（参数必须有合理非零默认值）
+
+```javascript
+let state = {
+    p: 2.0,                   // 主参数，必须非零
+    orientation: 'right',     // 方向/模式
+    isDraggingFocus: false,
+    isDraggingDirectrix: false,
+    dragOffset: 0,
+    animPointT: 0             // 动画参数
+};
+```
+
+---
+
+## 3. Canvas DPI 适配（完整实现）
+
+```javascript
+function resizeCanvas() {
+    const rect = container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+    ctx.scale(dpr, dpr);
+    draw();
+}
+window.addEventListener('resize', resizeCanvas);
+```
+
+---
+
+## 4. 坐标系转换（核心函数）
+
+```javascript
+function getCanvasCoords() {
+    const rect = canvas.getBoundingClientRect();
+    return { 
+        width: rect.width, 
+        height: rect.height, 
+        centerX: rect.width / 2, 
+        centerY: rect.height / 2 
+    };
+}
+
+// 逻辑坐标 → 屏幕坐标
+function toScreen(x, y, coords) {
+    const scale = Math.min(coords.width, coords.height) / 12;
+    return {
+        x: coords.centerX + x * scale,
+        y: coords.centerY - y * scale  // Y轴翻转
+    };
+}
+
+// 屏幕坐标 → 逻辑坐标
+function toLogic(screenX, screenY, coords) {
+    const scale = Math.min(coords.width, coords.height) / 12;
+    return {
+        x: (screenX - coords.centerX) / scale,
+        y: -(screenY - coords.centerY) / scale
+    };
+}
+```
+
+---
+
+## 5. 主绑定函数（调用顺序很重要）
+
+```javascript
+function draw() {
+    const coords = getCanvasCoords();
+    ctx.clearRect(0, 0, coords.width, coords.height);
+    
+    drawGrid(coords);           // 1. 网格背景
+    drawAxes(coords);           // 2. 坐标轴
+    drawDirectrix(coords);      // 3. 准线（虚线）
+    drawMainCurve(coords);      // 4. 主曲线
+    drawFocus(coords);          // 5. 焦点（带光晕）
+    drawAnimatedPoint(coords);  // 6. 动画演示点
+}
+```
+
+---
+
+## 6. 网格绘制（完整实现）
+
+```javascript
+function drawGrid(coords) {
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = 1;
+    const step = Math.min(coords.width, coords.height) / 12;
+    
+    ctx.beginPath();
+    for (let i = 0; i <= coords.width; i += step) {
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, coords.height);
+    }
+    for (let i = 0; i <= coords.height; i += step) {
+        ctx.moveTo(0, i);
+        ctx.lineTo(coords.width, i);
+    }
+    ctx.stroke();
+}
+```
+
+---
+
+## 7. 坐标轴绘制（完整实现）
+
+```javascript
+function drawAxes(coords) {
+    ctx.strokeStyle = COLORS.axis;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    // X轴
+    ctx.moveTo(0, coords.centerY);
+    ctx.lineTo(coords.width, coords.centerY);
+    // Y轴
+    ctx.moveTo(coords.centerX, 0);
+    ctx.lineTo(coords.centerX, coords.height);
+    ctx.stroke();
+    
+    // 原点标记
+    ctx.fillStyle = COLORS.secondary;
+    ctx.font = '12px Arial';
+    ctx.fillText('O', coords.centerX + 5, coords.centerY + 15);
+}
+```
+
+---
+
+## 8. 曲线绘制（参数方程遍历模式 - 核心）
+
+```javascript
+function drawMainCurve(coords) {
+    ctx.save();
+    ctx.strokeStyle = COLORS.primary;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+
+    const range = 10;
+    let started = false;
+    
+    // 关键：使用参数遍历绘制曲线
+    // 示例为抛物线 y² = 4px，遍历 y 计算 x
+    for (let y = -range * 1.5; y <= range * 1.5; y += 0.1) {
+        const x = (y * y) / (4 * state.p);  // 根据方程计算
+        const pos = toScreen(x, y, coords);
+        
+        if (!started) { 
+            ctx.moveTo(pos.x, pos.y); 
+            started = true; 
+        } else { 
+            ctx.lineTo(pos.x, pos.y); 
+        }
+    }
+    ctx.stroke();
+    ctx.restore();
+}
+```
+
+---
+
+## 9. 焦点绘制（光晕效果 - 必须实现）
+
+```javascript
+function drawFocus(coords) {
+    const focusX = state.p;  // 焦点坐标
+    const focusY = 0;
+    const pos = toScreen(focusX, focusY, coords);
+    
+    // 1. 光晕效果（RadialGradient）
+    const gradient = ctx.createRadialGradient(pos.x, pos.y, 2, pos.x, pos.y, 15);
+    gradient.addColorStop(0, 'rgba(234, 67, 53, 0.4)');
+    gradient.addColorStop(1, 'rgba(234, 67, 53, 0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. 实心点
+    ctx.fillStyle = COLORS.accent;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 3. 标签
+    ctx.fillStyle = COLORS.accent;
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText('F (焦点)', pos.x + 10, pos.y - 10);
+}
+```
+
+---
+
+## 10. 虚线绘制（准线示例）
+
+```javascript
+function drawDirectrix(coords) {
+    ctx.save();
+    ctx.strokeStyle = COLORS.secondary;
+    ctx.setLineDash([8, 8]);  // 虚线样式
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    const dVal = -state.p;  // 准线位置 x = -p
+    const pos = toScreen(dVal, 0, coords).x;
+    ctx.moveTo(pos, 0);
+    ctx.lineTo(pos, coords.height);
+    ctx.stroke();
+    
+    // 标签
+    ctx.fillStyle = COLORS.secondary;
+    ctx.setLineDash([]);
+    ctx.fillText(`x = ${dVal.toFixed(1)}`, pos + 5, 20);
+    ctx.restore();
+}
+```
+
+---
+
+## 11. 动画点绘制（等距性演示 - 必须有实际效果）
+
+```javascript
+function drawAnimatedPoint(coords) {
+    const t = state.animPointT;
+    
+    // 参数方程计算点位置
+    const px = state.p * t * t;      // x = pt²
+    const py = 2 * state.p * t;      // y = 2pt
+    
+    // 准线垂足
+    const dx = -state.p;
+    const dy = py;
+    
+    // 焦点
+    const fx = state.p;
+    const fy = 0;
+
+    const pPos = toScreen(px, py, coords);
+    const dPos = toScreen(dx, dy, coords);
+    const fPos = toScreen(fx, fy, coords);
+
+    // 1. 到焦点的连线（红色虚线）
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = COLORS.accent;
+    ctx.beginPath();
+    ctx.moveTo(pPos.x, pPos.y);
+    ctx.lineTo(fPos.x, fPos.y);
+    ctx.stroke();
+
+    // 2. 到准线的连线（绿色虚线）
+    ctx.strokeStyle = COLORS.success;
+    ctx.beginPath();
+    ctx.moveTo(pPos.x, pPos.y);
+    ctx.lineTo(dPos.x, dPos.y);
+    ctx.stroke();
+    ctx.restore();
+
+    // 3. 动画点（黄色+白边）
+    ctx.fillStyle = COLORS.warning;
+    ctx.beginPath();
+    ctx.arc(pPos.x, pPos.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 4. 距离标签
+    ctx.fillStyle = COLORS.primary;
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('|PF|', (pPos.x + fPos.x) / 2 - 10, (pPos.y + fPos.y) / 2 - 5);
+    ctx.fillText('|PL|', (pPos.x + dPos.x) / 2 + 10, (pPos.y + dPos.y) / 2 + 5);
+}
+```
+
+---
+
+## 12. 动画循环（requestAnimationFrame）
+
+```javascript
+function animate() {
+    state.animPointT += 0.02;
+    if (state.animPointT > 3.5) state.animPointT = -3.5;
+    
+    draw();
+    requestAnimationFrame(animate);
+}
+```
+
+---
+
+## 13. 交互事件处理（完整实现）
+
+```javascript
+canvas.addEventListener('mousedown', handleInputStart);
+canvas.addEventListener('mousemove', handleInputMove);
+window.addEventListener('mouseup', handleInputEnd);
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    handleInputStart(e.touches[0]);
+}, {passive: false});
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    handleInputMove(e.touches[0]);
+}, {passive: false});
+window.addEventListener('touchend', handleInputEnd);
+
+function handleInputStart(e) {
+    const coords = getCanvasCoords();
+    const mouseX = e.clientX - canvas.getBoundingClientRect().left;
+    const mouseY = e.clientY - canvas.getBoundingClientRect().top;
+    const logicPos = toLogic(mouseX, mouseY, coords);
+    
+    // 检测点击焦点（半径1.0单位内）
+    const focusX = state.p, focusY = 0;
+    const distToF = Math.sqrt((logicPos.x - focusX)**2 + (logicPos.y - focusY)**2);
+    if (distToF < 1.0) {
+        state.isDraggingFocus = true;
+        return;
+    }
+    
+    // 检测点击准线
+    const distToD = Math.abs(logicPos.x - (-state.p));
+    if (distToD < 1.0) {
+        state.isDraggingDirectrix = true;
+        state.dragOffset = logicPos.x - (-state.p);
+        return;
+    }
+}
+
+function handleInputMove(e) {
+    if (!state.isDraggingFocus && !state.isDraggingDirectrix) return;
+    
+    const coords = getCanvasCoords();
+    const mouseX = e.clientX - canvas.getBoundingClientRect().left;
+    const mouseY = e.clientY - canvas.getBoundingClientRect().top;
+    const logicPos = toLogic(mouseX, mouseY, coords);
+    
+    if (state.isDraggingFocus) {
+        state.p = Math.max(0.5, Math.min(5, logicPos.x));
+    } else if (state.isDraggingDirectrix) {
+        const newVal = logicPos.x - state.dragOffset;
+        state.p = Math.max(0.5, Math.min(5, -newVal));
+    }
+    
+    updateUI();
+    pSlider.value = state.p;
+    draw();
+}
+
+function handleInputEnd() {
+    state.isDraggingFocus = false;
+    state.isDraggingDirectrix = false;
+}
+```
+
+---
+
+## 14. UI 更新函数
+
+```javascript
+function updateUI() {
+    const displayP = state.p.toFixed(1);
+    pValueDisplay.textContent = displayP;
+    
+    // 实时更新方程
+    const coef = (4 * state.p).toFixed(1);
+    equationDisplay.textContent = `y² = ${coef}x`;
+    focusCoordDisplay.textContent = `(${displayP}, 0)`;
+    directrixCoordDisplay.textContent = `x = ${(-state.p).toFixed(1)}`;
+}
+```
+
+---
+
+## 15. 初始化函数
+
+```javascript
+function init() {
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    
+    pSlider.addEventListener('input', (e) => {
+        state.p = parseFloat(e.target.value);
+        updateUI();
+        draw();
+    });
+    
+    updateUI();
+    draw();
+    requestAnimationFrame(animate);
+}
+init();
+```
+
+---
+
+## 关键要求总结
+
+1. **COLORS 必须定义** - 脚本开头定义颜色常量
+2. **参数非零** - state.p 等核心参数必须有合理默认值（如2.0）
+3. **函数完整** - 每个 draw 函数都有完整的 ctx 绑制代码
+4. **曲线用参数遍历** - for循环 + toScreen转换
+5. **关键点有光晕** - RadialGradient 效果
+6. **动画点有运动** - requestAnimationFrame + 参数递增
+7. **拖拽改变参数** - 检测点击 → 更新state → 重绘

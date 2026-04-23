@@ -1,0 +1,235 @@
+## 解析几何专项指导
+
+你正在处理一道解析几何题目（圆锥曲线、直线方程、圆的方程等）。
+
+### 核心原则
+
+**解析几何的核心是坐标系**，所有可视化必须以清晰的坐标系为基础：
+1. 坐标系是必须的，不是可选的
+2. 曲线必须在坐标系中精确绘制
+3. 关键几何元素（焦点、准线、顶点等）必须醒目标注
+
+### 标准坐标系要求
+
+```javascript
+// 数学坐标系（原点居中，Y轴向上）
+const originX = canvas.width / 2;
+const originY = canvas.height / 2;
+const scale = 40;  // 每单位40像素
+
+// 数学坐标 → Canvas坐标
+function toCanvasX(mathX) { return originX + mathX * scale; }
+function toCanvasY(mathY) { return originY - mathY * scale; }
+
+// Canvas坐标 → 数学坐标
+function toMathX(canvasX) { return (canvasX - originX) / scale; }
+function toMathY(canvasY) { return (originY - canvasY) / scale; }
+```
+
+### 圆锥曲线可视化要求
+
+#### 1. 抛物线 y² = 4px
+
+**必须显示的元素**：
+- 抛物线曲线（蓝色，线宽3px）
+- 焦点 F(p, 0)（红色圆点，半径8px）
+- 顶点 V(0, 0)（绿色圆点，半径6px）
+- 准线 x = -p（紫色虚线）
+- 对称轴 y = 0（灰色虚线，可选）
+
+**交互功能**：
+- 滑块调节 p 值（范围 1-10）
+- 拖拽焦点沿 X 轴移动
+- 实时更新方程显示
+
+```javascript
+// 抛物线绘制核心代码
+function drawParabola(ctx, p, originX, originY, scale) {
+    ctx.strokeStyle = '#3B82F6';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    
+    ctx.beginPath();
+    // 上半支
+    for (let x = 0; x <= 10; x += 0.05) {
+        const y = 2 * Math.sqrt(p * x);
+        if (x === 0) ctx.moveTo(toCanvasX(x), toCanvasY(y));
+        else ctx.lineTo(toCanvasX(x), toCanvasY(y));
+    }
+    ctx.stroke();
+    
+    // 下半支
+    ctx.beginPath();
+    for (let x = 0; x <= 10; x += 0.05) {
+        const y = -2 * Math.sqrt(p * x);
+        if (x === 0) ctx.moveTo(toCanvasX(x), toCanvasY(y));
+        else ctx.lineTo(toCanvasX(x), toCanvasY(y));
+    }
+    ctx.stroke();
+}
+```
+
+#### 2. 椭圆 x²/a² + y²/b² = 1
+
+**必须显示的元素**：
+- 椭圆曲线（蓝色）
+- 焦点 F₁(-c, 0) 和 F₂(c, 0)（红色圆点）
+- 顶点 A₁(-a, 0), A₂(a, 0), B₁(0, -b), B₂(0, b)
+- 长轴和短轴（灰色虚线）
+
+**交互功能**：
+- 滑块调节 a 和 b 值
+- 显示离心率 e = c/a
+- 演示椭圆定义：|PF₁| + |PF₂| = 2a
+
+```javascript
+// 椭圆绘制
+function drawEllipse(ctx, a, b, originX, originY, scale) {
+    ctx.strokeStyle = '#3B82F6';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let t = 0; t <= 2 * Math.PI; t += 0.02) {
+        const x = a * Math.cos(t);
+        const y = b * Math.sin(t);
+        if (t === 0) ctx.moveTo(toCanvasX(x), toCanvasY(y));
+        else ctx.lineTo(toCanvasX(x), toCanvasY(y));
+    }
+    ctx.closePath();
+    ctx.stroke();
+    
+    // 焦点
+    const c = Math.sqrt(a * a - b * b);
+    drawPoint(ctx, c, 0, '#EF4444', 'F₂');
+    drawPoint(ctx, -c, 0, '#EF4444', 'F₁');
+}
+```
+
+#### 3. 双曲线 x²/a² - y²/b² = 1
+
+**必须显示的元素**：
+- 双曲线两支（蓝色）
+- 焦点 F₁(-c, 0) 和 F₂(c, 0)（红色圆点）
+- 渐近线 y = ±(b/a)x（灰色虚线）
+- 顶点 A₁(-a, 0), A₂(a, 0)
+
+```javascript
+// 双曲线绘制
+function drawHyperbola(ctx, a, b, originX, originY, scale) {
+    ctx.strokeStyle = '#3B82F6';
+    ctx.lineWidth = 3;
+    
+    // 右支
+    ctx.beginPath();
+    for (let t = -3; t <= 3; t += 0.05) {
+        const x = a * Math.cosh(t);
+        const y = b * Math.sinh(t);
+        if (t === -3) ctx.moveTo(toCanvasX(x), toCanvasY(y));
+        else ctx.lineTo(toCanvasX(x), toCanvasY(y));
+    }
+    ctx.stroke();
+    
+    // 左支
+    ctx.beginPath();
+    for (let t = -3; t <= 3; t += 0.05) {
+        const x = -a * Math.cosh(t);
+        const y = b * Math.sinh(t);
+        if (t === -3) ctx.moveTo(toCanvasX(x), toCanvasY(y));
+        else ctx.lineTo(toCanvasX(x), toCanvasY(y));
+    }
+    ctx.stroke();
+    
+    // 渐近线
+    ctx.strokeStyle = '#9CA3AF';
+    ctx.setLineDash([5, 5]);
+    const slope = b / a;
+    // y = (b/a)x
+    ctx.beginPath();
+    ctx.moveTo(toCanvasX(-10), toCanvasY(-10 * slope));
+    ctx.lineTo(toCanvasX(10), toCanvasY(10 * slope));
+    ctx.stroke();
+    // y = -(b/a)x
+    ctx.beginPath();
+    ctx.moveTo(toCanvasX(-10), toCanvasY(10 * slope));
+    ctx.lineTo(toCanvasX(10), toCanvasY(-10 * slope));
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+```
+
+### 通用绘图工具函数
+
+```javascript
+// 绘制标注点
+function drawPoint(ctx, mathX, mathY, color, label) {
+    const cx = toCanvasX(mathX);
+    const cy = toCanvasY(mathY);
+    
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 白色边框
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // 标签
+    ctx.fillStyle = '#1F2937';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(label, cx + 12, cy - 10);
+}
+
+// 绘制虚线
+function drawDashedLine(ctx, x1, y1, x2, y2, color) {
+    ctx.strokeStyle = color;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(toCanvasX(x1), toCanvasY(y1));
+    ctx.lineTo(toCanvasX(x2), toCanvasY(y2));
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+```
+
+### 实时数据面板
+
+解析几何可视化必须包含数据面板，显示：
+- 当前标准方程
+- 关键参数（a, b, c, p 等）
+- 离心率 e
+- 焦点坐标
+- 准线/渐近线方程
+
+```html
+<div class="bg-gray-50 p-4 rounded-lg">
+    <div class="grid grid-cols-2 gap-3">
+        <div class="bg-blue-50 p-3 rounded">
+            <div class="text-xs text-blue-600">标准方程</div>
+            <div id="equation" class="font-mono">y² = 20x</div>
+        </div>
+        <div class="bg-red-50 p-3 rounded">
+            <div class="text-xs text-red-600">焦点坐标</div>
+            <div id="focus" class="font-mono">(5, 0)</div>
+        </div>
+        <div class="bg-purple-50 p-3 rounded">
+            <div class="text-xs text-purple-600">准线方程</div>
+            <div id="directrix" class="font-mono">x = -5</div>
+        </div>
+        <div class="bg-green-50 p-3 rounded">
+            <div class="text-xs text-green-600">焦点距离 p</div>
+            <div id="pValue" class="font-mono">5</div>
+        </div>
+    </div>
+</div>
+```
+
+### 颜色约定
+
+- 曲线本身：蓝色 `#3B82F6`
+- 焦点：红色 `#EF4444`
+- 顶点：绿色 `#10B981`
+- 准线：紫色 `#8B5CF6`
+- 渐近线：灰色 `#9CA3AF`
+- 辅助线：橙色 `#F59E0B`
+- 网格：浅灰色 `#E5E7EB`

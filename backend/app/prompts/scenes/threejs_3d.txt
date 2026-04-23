@@ -1,0 +1,224 @@
+## Three.js 3D 场景
+
+此场景类型适用于：立体几何、空间向量、分子结构、3D物理模拟等需要三维可视化的题目。
+
+### 技术栈
+
+```html
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+```
+
+### 页面结构模板
+
+```html
+<body class="min-h-screen p-6 bg-[#F5F7FB]">
+    <main class="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 h-[calc(100vh-48px)]">
+        
+        <!-- 左侧：3D模型区 -->
+        <section class="w-full lg:w-5/12 bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">
+            <div class="px-5 py-4 border-b bg-gray-50 flex justify-between items-center">
+                <h2 class="font-semibold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-cube text-blue-500"></i> 三维模型
+                </h2>
+                <button onclick="resetCamera()" class="text-sm text-gray-500 hover:text-blue-500 px-3 py-1 rounded hover:bg-blue-50">
+                    <i class="fa-solid fa-rotate-right mr-1"></i>复位视角
+                </button>
+            </div>
+            
+            <div id="canvas-container" class="flex-grow cursor-grab active:cursor-grabbing">
+                <!-- Three.js 将在此渲染 -->
+            </div>
+            
+            <!-- 控制按钮组 -->
+            <div class="p-4 bg-white border-t grid grid-cols-3 gap-2">
+                <button onclick="highlightFace('ABC')" class="py-2 bg-blue-50 text-blue-700 rounded-lg">面ABC</button>
+                <button onclick="highlightFace('BCD')" class="py-2 bg-green-50 text-green-700 rounded-lg">面BCD</button>
+                <button onclick="highlightFace('ACD')" class="py-2 bg-red-50 text-red-700 rounded-lg">面ACD</button>
+            </div>
+        </section>
+
+        <!-- 右侧：题目与推理区 -->
+        <section class="w-full lg:w-7/12 bg-white rounded-2xl shadow-xl flex flex-col overflow-hidden">
+            <!-- 题目区 -->
+            <div class="p-6 bg-blue-50/50 border-b">
+                <h2 class="text-xl font-bold text-gray-800 mb-3">题目内容</h2>
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <!-- 题目描述 -->
+                </div>
+            </div>
+            
+            <!-- 推理步骤区 -->
+            <div class="p-6 flex-grow overflow-y-auto">
+                <div id="steps-container" class="space-y-4">
+                    <!-- 步骤卡片动态插入 -->
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+```
+
+### Three.js 初始化代码
+
+```javascript
+const container = document.getElementById('canvas-container');
+let scene, camera, renderer, controls;
+
+function init3D() {
+    // 场景
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+    
+    // 相机 - 数学习惯 Z轴朝上
+    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.up.set(0, 0, 1);  // Z轴朝上
+    camera.position.set(8, -10, 8);
+    
+    // 渲染器
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+    
+    // 轨道控制器
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 0, 0);
+    
+    // 灯光
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 10, 10);
+    scene.add(dirLight);
+    
+    // 构建几何体
+    buildGeometry();
+    
+    // 窗口适应
+    window.addEventListener('resize', onResize);
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+    updateLabels(); // 更新HTML标签位置
+}
+
+function onResize() {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+}
+
+init3D();
+animate();
+```
+
+### 几何体构建示例（四面体）
+
+```javascript
+function buildGeometry() {
+    const size = 4;
+    const vertices = {
+        A: new THREE.Vector3(0, 0, 0),
+        B: new THREE.Vector3(size, 0, 0),
+        C: new THREE.Vector3(size/2, size*Math.sqrt(3)/2, 0),
+        D: new THREE.Vector3(size/2, size*Math.sqrt(3)/6, size*Math.sqrt(6)/3)
+    };
+    
+    // 顶点球体
+    const sphereGeo = new THREE.SphereGeometry(0.2, 32, 32);
+    const sphereMat = new THREE.MeshPhongMaterial({ color: 0x4285F4 });
+    
+    Object.entries(vertices).forEach(([name, pos]) => {
+        const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+        sphere.position.copy(pos);
+        scene.add(sphere);
+        addLabel(name, pos);
+    });
+    
+    // 棱（圆柱体）
+    createEdge(vertices.A, vertices.B);
+    createEdge(vertices.A, vertices.C);
+    createEdge(vertices.A, vertices.D);
+    createEdge(vertices.B, vertices.C);
+    createEdge(vertices.B, vertices.D);
+    createEdge(vertices.C, vertices.D);
+}
+```
+
+### HTML标签叠加层（顶点标注）
+
+```javascript
+const labels = [];
+
+function addLabel(text, pos) {
+    const div = document.createElement('div');
+    div.className = 'absolute text-sm font-bold text-gray-800 pointer-events-none';
+    div.style.textShadow = '1px 1px 0 #fff, -1px -1px 0 #fff';
+    div.textContent = text;
+    container.appendChild(div);
+    labels.push({ elem: div, pos: pos });
+}
+
+function updateLabels() {
+    labels.forEach(label => {
+        const vector = label.pos.clone().project(camera);
+        const x = (vector.x * 0.5 + 0.5) * container.clientWidth;
+        const y = (vector.y * -0.5 + 0.5) * container.clientHeight;
+        
+        label.elem.style.left = x + 'px';
+        label.elem.style.top = y + 'px';
+        label.elem.style.opacity = vector.z > 1 ? '0' : '1';
+    });
+}
+```
+
+### 面高亮效果
+
+```javascript
+function highlightFace(faceName, color = 0xFBBC05) {
+    // 根据面名获取顶点
+    const faceVertices = getFaceVertices(faceName);
+    
+    // 创建半透明面
+    const geometry = new THREE.BufferGeometry().setFromPoints(faceVertices);
+    const material = new THREE.MeshBasicMaterial({
+        color: color,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.4,
+        depthWrite: false
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+}
+```
+
+### 视角控制函数
+
+```javascript
+function resetCamera() {
+    camera.position.set(8, -10, 8);
+    controls.target.set(0, 0, 0);
+    controls.update();
+}
+
+function topView() {
+    camera.position.set(0, 0, 12);
+    controls.target.set(0, 0, 0);
+    controls.update();
+}
+
+function sideView() {
+    camera.position.set(12, 0, 0);
+    controls.target.set(0, 0, 0);
+    controls.update();
+}
+```

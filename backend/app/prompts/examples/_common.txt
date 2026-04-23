@@ -1,0 +1,52 @@
+# 强制性代码规范
+
+## CDN 地址（必须使用）
+```html
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+```
+
+## COLORS 常量（必须在脚本开头定义）
+```javascript
+const COLORS = {
+    primary: '#4285F4',   // 蓝 - 主曲线
+    accent: '#EA4335',    // 红 - 焦点/关键点
+    secondary: '#64748b', // 灰 - 辅助线
+    success: '#34A853',   // 绿 - 成功标注
+    warning: '#FBBC05',   // 黄 - 动画点
+    grid: '#f0f0f0',      // 网格线
+    axis: '#cbd5e1'       // 坐标轴
+};
+```
+
+## 工具函数
+```javascript
+function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+```
+
+## 严禁事项
+1. **禁止留空函数体** - 每个函数必须有完整实现
+2. **禁止参数默认值为0** - 焦距、半径等核心参数必须有合理非零默认值（如 p=2.0）
+3. **禁止使用 setInterval** - 动画必须用 requestAnimationFrame
+4. **禁止硬编码颜色** - 所有颜色必须引用 COLORS 常量
+5. **禁止遗漏触摸事件** - 必须同时支持 mouse 和 touch
+
+## CSS优先级严禁事项（容器高度塌陷防护）
+1. **严禁**在`<style>`中用#id选择器覆盖Tailwind的定位类(position/inset/top/left/right/bottom等)
+2. 3D/Canvas容器必须保证有明确的宽高(通过Tailwind类或显式CSS)
+3. 如果容器使用Tailwind的`absolute inset-0`，自定义CSS中**绝对不能**给该容器写`position`属性
+4. JS初始化renderer/canvas前，必须检查容器尺寸是否为0，为0时强制设置fallback高度
+
+## MathJax异步安全调用（严禁违反）
+1. MathJax使用async加载，页面初始化时可能尚未就绪
+2. `window.MathJax`配置对象会在脚本加载前就存在（因为是手动定义的），**严禁**仅判断`window.MathJax`
+3. 调用`MathJax.typesetPromise()`或`MathJax.typeset()`前，**必须**检查函数是否存在：
+   ```javascript
+   // ✅ 正确写法
+   if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+       MathJax.typesetPromise();
+   }
+   
+   // ❌ 错误写法（会导致运行时错误，阻塞整个页面）
+   if (window.MathJax) MathJax.typesetPromise();
+   ```

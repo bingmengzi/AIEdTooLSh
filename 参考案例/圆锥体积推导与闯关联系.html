@@ -1,0 +1,593 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圆锥体积推导与闯关练习</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 强制使用系统默认字体 */
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background-color: #F5F7FB; 
+        }
+
+        /* SVG 动画过渡属性 */
+        .svg-anim {
+            transition: all 0.8s ease-in-out;
+        }
+
+        /* 隐藏滚动条但保持可滚动 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+        /* 分数样式辅助类 */
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: middle;
+            margin: 0 0.125rem;
+            line-height: 1.1;
+            font-size: 0.9em;
+        }
+        .fraction .numerator { border-bottom: 1px solid currentColor; padding-bottom: 1px; display: block; width: 100%; text-align: center; }
+        .fraction .denominator { padding-top: 1px; display: block; width: 100%; text-align: center; }
+        
+        /* 判断题对错符号样式 */
+        .tf-mark { font-weight: bold; padding: 0 4px; border-radius: 4px; }
+        .tf-wrong { color: #EA4335; background: #fee2e2; }
+        .tf-right { color: #34A853; background: #dcfce7; }
+
+        /* 尺寸标注线样式 */
+        .dim-line { stroke: #4b5563; stroke-width: 1.5; stroke-dasharray: 4 2; }
+        .dim-text { font-size: 12px; fill: #4b5563; font-weight: bold; font-family: sans-serif; }
+        .dim-arrow { fill: #4b5563; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-6 px-4 md:px-8">
+
+    <!-- ================= 顶部标题与悬念操作区 ================= -->
+    <header class="w-full max-w-6xl bg-white rounded-2xl shadow-md p-6 mb-6 border-t-4 border-blue-500 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all duration-300">
+        <div class="">
+            <div class="flex items-center gap-3">
+                <span class="bg-blue-100 text-blue-600 p-3 rounded-xl shadow-sm">
+                    <i class="fa-solid fa-flask text-2xl"></i>
+                </span>
+                <h1 class="text-3xl font-bold text-gray-800 tracking-wide">圆锥体积推导实验</h1>
+            </div>
+            <p class="text-gray-500 mt-2 text-lg">通过“倒水实验”，直观观察等底等高圆柱与圆锥的体积关系</p>
+        </div>
+        
+        <div class="flex flex-col items-end relative min-w-[200px]">
+            <button id="btn-toggle-formula" onclick="toggleFormula()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 font-bold py-2.5 px-5 rounded-xl shadow-sm transition-all flex items-center gap-2 active:scale-95 z-10">
+                <i class="fa-solid fa-eye text-lg"></i> <span class="">揭晓推导结论</span>
+            </button>
+            
+            <div id="formula-container" class="overflow-hidden transition-all duration-500 ease-in-out max-h-0 opacity-0 w-full md:w-auto mt-2 origin-top">
+                <div class="bg-blue-50 px-8 py-4 rounded-xl border border-blue-200 text-center shadow-inner">
+                    <span class="text-sm text-blue-500 font-bold tracking-widest uppercase block mb-1">推导结论</span>
+                    <div class="text-3xl font-serif text-blue-700 font-bold flex items-center justify-center gap-2">
+                        <span class="">V<sub>锥</sub></span>
+                        <span class="">=</span>
+                        <span class="fraction text-2xl mx-1">
+                            <span class="numerator">1</span>
+                            <span class="denominator">3</span>
+                        </span>
+                        <span class="">V<sub>柱</sub></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= 核心互动实验区域 ================= -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+        <section class="lg:col-span-8 bg-white rounded-2xl shadow-lg p-6 relative flex flex-col justify-center items-center overflow-hidden min-h-[520px]">
+            <div id="status-badge" class="absolute top-6 left-1/2 transform -translate-x-1/2 bg-yellow-100 text-yellow-700 px-6 py-2 rounded-full font-bold text-lg shadow-sm transition-colors duration-300 z-10 flex items-center whitespace-nowrap">
+                <i class="fa-solid fa-circle-info mr-2"></i><span class="">准备就绪，点击“开始倒水”</span>
+            </div>
+
+            <div class="flex justify-center items-end gap-12 md:gap-24 w-full h-[420px] mt-12">
+                <!-- 圆柱体 -->
+                <div class="flex flex-col items-center relative">
+                    <svg width="200" height="320" viewBox="0 0 300 400" class="overflow-visible relative z-0">
+                        <defs>
+                            <clipPath id="cyl-clip"><path d="M 50 50 L 50 350 A 100 20 0 0 0 250 350 L 250 50 Z"></path></clipPath>
+                        </defs>
+                        <ellipse cx="150" cy="50" rx="100" ry="20" fill="#f3f4f6" stroke="#d1d5db" stroke-width="2"></ellipse>
+                        <path d="M 50 50 L 50 350 A 100 20 0 0 0 250 350 L 250 50 Z" fill="#f9fafb" stroke="#d1d5db" stroke-width="2"></path>
+                        <g clip-path="url(#cyl-clip)">
+                            <rect id="water-layer-1" class="svg-anim" x="50" y="350" width="200" height="0" fill="#4285F4" opacity="0.9"></rect>
+                            <rect id="water-layer-2" class="svg-anim" x="50" y="250" width="200" height="0" fill="#34A853" opacity="0.9"></rect>
+                            <rect id="water-layer-3" class="svg-anim" x="50" y="150" width="200" height="0" fill="#FBBC05" opacity="0.9"></rect>
+                        </g>
+                        <ellipse id="water-top-1" class="svg-anim" cx="150" cy="350" rx="100" ry="20" fill="#2b6cb0" opacity="0"></ellipse>
+                        <ellipse id="water-top-2" class="svg-anim" cx="150" cy="250" rx="100" ry="20" fill="#276749" opacity="0"></ellipse>
+                        <ellipse id="water-top-3" class="svg-anim" cx="150" cy="150" rx="100" ry="20" fill="#d69e2e" opacity="0"></ellipse>
+                        <ellipse cx="150" cy="350" rx="100" ry="20" fill="none" stroke="#9ca3af" stroke-width="3"></ellipse>
+                        <ellipse cx="150" cy="50" rx="100" ry="20" fill="none" stroke="#9ca3af" stroke-width="3"></ellipse>
+                        <line x1="50" y1="50" x2="50" y2="350" stroke="#9ca3af" stroke-width="3"></line>
+                        <line x1="250" y1="50" x2="250" y2="350" stroke="#9ca3af" stroke-width="3"></line>
+                    </svg>
+                    <span class="mt-4 font-bold text-gray-700 text-lg bg-white px-4 py-1 rounded-full shadow-sm border border-gray-100">无刻度圆柱</span>
+                </div>
+
+                <!-- 圆锥体 -->
+                <div class="flex flex-col items-center">
+                    <svg width="200" height="320" viewBox="0 0 300 400" class="overflow-visible relative z-10">
+                        <defs>
+                            <clipPath id="cone-clip"><path d="M 50 50 L 150 350 L 250 50 Z"></path></clipPath>
+                        </defs>
+                        <ellipse cx="150" cy="50" rx="100" ry="20" fill="#f3f4f6" stroke="#d1d5db" stroke-width="2"></ellipse>
+                        <path d="M 50 50 L 150 350 L 250 50 Z" fill="#f9fafb" stroke="#d1d5db" stroke-width="2"></path>
+                        <g clip-path="url(#cone-clip)">
+                            <rect id="cone-water-rect" class="svg-anim" x="50" y="350" width="200" height="0" fill="#4285F4" opacity="0.9"></rect>
+                        </g>
+                        <ellipse id="cone-water-top" class="svg-anim" cx="150" cy="350" rx="0" ry="0" fill="#2b6cb0" opacity="0"></ellipse>
+                        <ellipse cx="150" cy="50" rx="100" ry="20" fill="none" stroke="#9ca3af" stroke-width="3"></ellipse>
+                        <path d="M 50 50 L 150 350 L 250 50 Z" fill="none" stroke="#9ca3af" stroke-width="3"></path>
+                    </svg>
+                    <span class="mt-4 font-bold text-gray-700 text-lg bg-white px-4 py-1 rounded-full shadow-sm border border-gray-100">等底等高的圆锥</span>
+                </div>
+            </div>
+        </section>
+
+        <aside class="lg:col-span-4 bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between border-t-4 border-green-500">
+            <div class="">
+                <h2 class="text-xl font-bold text-gray-800 border-b-2 border-gray-100 pb-3 mb-6 flex items-center"><i class="fa-solid fa-gamepad text-green-500 mr-2"></i>实验控制台</h2>
+                <div class="mb-6">
+                    <div class="flex justify-between text-sm text-gray-500 mb-2 font-bold items-end">
+                        <span class="">空容器</span>
+                        <div class="text-center">
+                            <span class="block text-xs text-gray-400 font-normal">倒入次数</span>
+                            <span id="step-count" class="text-blue-600 text-2xl leading-none">0</span><span class="text-gray-400">/3</span>
+                        </div>
+                        <span class="">装满</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-4 flex overflow-hidden border border-gray-200 shadow-inner">
+                        <div id="pb-1" class="h-full transition-all duration-700 bg-blue-500 w-0"></div>
+                        <div id="pb-2" class="h-full transition-all duration-700 bg-green-500 w-0 border-l border-white/30"></div>
+                        <div id="pb-3" class="h-full transition-all duration-700 bg-yellow-400 w-0 border-l border-white/30"></div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-5 border border-gray-200 min-h-[140px] mb-8 shadow-inner flex flex-col justify-center">
+                    <p id="instruction-text" class="text-gray-700 text-lg leading-relaxed">
+                        注意观察左侧没有刻度线的圆柱。<br><br>我们将使用圆锥装满水，每次使用<strong class="text-blue-500">不同颜色</strong>区分倒入次数。看看装满圆柱需要几杯？
+                    </p>
+                </div>
+            </div>
+            <div class="flex flex-col gap-4">
+                <button id="btn-pour" onclick="pourWater()" class="w-full bg-[#4285F4] hover:bg-blue-600 text-white font-bold py-4 rounded-xl shadow-md transform hover:scale-[1.02] transition-all text-xl flex justify-center items-center gap-2 active:scale-95">
+                    <i class="fa-solid fa-fill-drip"></i> 装满水并倒入
+                </button>
+                <button id="btn-reset" onclick="resetExperiment()" class="w-full bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200 font-bold py-3 rounded-xl transition-all text-lg flex justify-center items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> 清空重新实验
+                </button>
+            </div>
+        </aside>
+    </main>
+
+    <!-- ================= 知识总结模块 ================= -->
+    <section class="w-full max-w-6xl bg-white rounded-2xl shadow-md p-6 mb-8 flex flex-col md:flex-row gap-6 items-center">
+        <img src="https://api.zcat.cn/udata/721728/png/d0d873bcb1266a0024747cdc70d83108.png" alt="几何体积插图" class="w-32 h-32 object-cover rounded-xl shadow-sm border border-gray-100 hidden md:block">
+        <div class="flex-1">
+            <h3 class="text-xl font-bold text-gray-800 mb-3"><i class="fa-solid fa-book-open text-purple-500 mr-2"></i>实验总结</h3>
+            <ul class="space-y-2 text-gray-700 text-lg">
+                <li class="flex items-start"><i class="fa-solid fa-check text-green-500 mt-1 mr-3"></i><span class=""><strong class="">现象观察：</strong>去除了刻度线后，我们可以清晰看到 <strong class="">蓝、绿、黄</strong> 3 份独立体积的圆锥水，完全且刚好拼接成了一个完整的圆柱。</span></li>
+                <li class="flex items-start"><i class="fa-solid fa-check text-green-500 mt-1 mr-3"></i><span class=""><strong class="">推导思考：</strong>既然倒了 3 次才装满，这就意味着等底等高的圆柱体积，是圆锥体积的 <strong class="text-red-500 text-xl mx-1">3</strong> 倍。</span></li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- ================= 闯关巩固练习 (单列全宽布局) ================= -->
+    <section class="w-full max-w-6xl mb-12 flex flex-col gap-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-2 flex items-center">
+            <i class="fa-solid fa-trophy text-yellow-500 mr-3 text-3xl"></i>闯关巩固练习
+            <span class="text-sm font-normal text-gray-500 ml-4 bg-gray-200 px-3 py-1 rounded-full">挑战一下你的学习成果！</span>
+        </h2>
+        
+        <!-- 关卡 1: 试一试 -->
+        <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-blue-500 flex flex-col w-full">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-bold"><i class="fa-solid fa-shapes mr-1"></i> 试一试</span>
+            </div>
+            <p class="text-gray-700 text-lg mb-6 leading-relaxed">
+                一个圆锥形零件，底面积是 <strong class="text-blue-600 font-mono">170 cm²</strong>，高是 <strong class="text-blue-600 font-mono">12 cm</strong>。<br>这个零件的体积是多少立方厘米？
+            </p>
+            <div class="flex gap-3 mt-auto mb-2 w-full md:w-1/2">
+                <button onclick="toggleBox('hint-q1')" class="flex-1 text-yellow-700 bg-yellow-50 hover:bg-yellow-100 py-2 rounded-lg border border-yellow-200 transition-colors font-bold text-sm"><i class="fa-regular fa-lightbulb"></i> 提示</button>
+                <button onclick="toggleBox('ans-q1')" class="flex-1 text-green-700 bg-green-50 hover:bg-green-100 py-2 rounded-lg border border-green-200 transition-colors font-bold text-sm"><i class="fa-solid fa-check"></i> 看答案</button>
+            </div>
+            <div id="hint-q1" class="hidden mt-3 bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm border border-yellow-200">
+                <strong class="">💡 提示：</strong>已知底面积 S 和高 h，直接使用公式 <code class="bg-white px-1 rounded text-red-500">V = 1/3 × S × h</code>。
+            </div>
+            <div id="ans-q1" class="hidden mt-3 bg-green-50 text-green-800 p-4 rounded-lg text-sm border border-green-200 font-mono">
+                <strong class="">✅ 解答过程：</strong><br>
+                V = <span class="fraction"><span class="numerator">1</span><span class="denominator">3</span></span> × 170 × 12<br>
+                &nbsp;&nbsp;= 170 × (12 ÷ 3)<br>
+                &nbsp;&nbsp;= 170 × 4<br>
+                &nbsp;&nbsp;= <strong class="text-red-600 text-lg">680 (cm³)</strong>
+            </div>
+        </div>
+
+        <!-- 关卡 2: 巧判断 -->
+        <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-purple-500 flex flex-col w-full">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-bold"><i class="fa-solid fa-scale-balanced mr-1"></i> 第一关——巧判断</span>
+            </div>
+            <div class="space-y-3 mb-6">
+                <div class="flex items-start gap-3 p-2 hover:bg-gray-50 rounded">
+                    <span class="font-bold text-gray-500">1.</span>
+                    <span class="text-gray-700 flex-1">圆锥的体积等于圆柱体积的 <span class="fraction"><span class="numerator">1</span><span class="denominator">3</span></span>。</span>
+                    
+                </div>
+                <div class="flex items-start gap-3 p-2 hover:bg-gray-50 rounded">
+                    <span class="font-bold text-gray-500">2.</span>
+                    <span class="text-gray-700 flex-1">圆柱体的体积一定比圆锥体的体积大。</span>
+                    
+                </div>
+                <div class="flex items-start gap-3 p-2 hover:bg-gray-50 rounded">
+                    <span class="font-bold text-gray-500">3.</span>
+                    <span class="text-gray-700 flex-1">等底等高的圆柱和圆锥，如果圆柱的体积是 27m³，那么圆锥是 9m³。</span>
+                    
+                </div>
+                <div class="flex items-start gap-3 p-2 hover:bg-gray-50 rounded">
+                    <span class="font-bold text-gray-500">4.</span>
+                    <span class="text-gray-700 flex-1">正方体、长方体、圆柱体、圆锥体的体积都等于底面积×高。</span>
+                    
+                </div>
+            </div>
+            <div class="flex gap-3 mt-auto mb-2 w-full md:w-1/2">
+                 <button onclick="toggleBox('ans-q2')" class="w-full text-green-700 bg-green-50 hover:bg-green-100 py-2 rounded-lg border border-green-200 transition-colors font-bold text-sm"><i class="fa-solid fa-list-check"></i> 查看解析</button>
+            </div>
+            <div id="ans-q2" class="hidden mt-3 bg-green-50 text-green-800 p-4 rounded-lg text-sm border border-green-200">
+                <strong class="">✅ 解析：</strong><br>
+                1. <strong class="">×</strong> 必须是<strong class="">等底等高</strong>的圆锥才是圆柱的 1/3。<br>
+                2. <strong class="">×</strong> 没有前提条件（底和高），无法比较大小。<br>
+                3. <strong class="">√</strong> 符合 V<sub>锥</sub> = 1/3 V<sub>柱</sub> (27 ÷ 3 = 9)。<br>
+                4. <strong class="">×</strong> 圆锥体积需要乘 <span class="fraction"><span class="numerator">1</span><span class="denominator">3</span></span>。
+            </div>
+        </div>
+
+        <!-- 关卡 3: 巧思考 -->
+        <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-orange-500 flex flex-col w-full">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-bold"><i class="fa-solid fa-brain mr-1"></i> 第二关——巧思考</span>
+            </div>
+            <div class="flex flex-col md:flex-row gap-6 mb-6">
+                <p class="text-gray-700 text-lg leading-relaxed flex-1">
+                    有两个玻璃容器。在圆锥形容器里注满水，倒入空的圆柱形容器，圆柱形容器里的水深多少厘米？<br>
+                    <span class="text-sm text-gray-500 mt-2 block"><i class="fa-solid fa-circle-info text-blue-400"></i> 已知两个容器等底等高，且高度均为 12cm。</span>
+                </p>
+                <div class="flex gap-6 items-end justify-center bg-gray-50 p-6 rounded-xl border border-gray-200">
+                     <div class="relative w-16 h-24 border-2 border-gray-400 bg-white flex justify-center items-end overflow-hidden">
+                         <div class="w-full h-full bg-blue-400 absolute bottom-0 opacity-80"></div>
+                         <div class="absolute bottom-0 w-full h-0 border-t-[36px] border-l-[30px] border-r-[30px] border-transparent border-b-blue-600"></div>
+                         <span class="absolute -bottom-6 text-xs text-gray-500 whitespace-nowrap">满 (高 12cm)</span>
+                     </div>
+                     <i class="fa-solid fa-arrow-right text-gray-400 mb-8 text-xl"></i>
+                     <div class="relative w-16 h-24 border-2 border-gray-400 bg-white flex justify-center items-end overflow-hidden">
+                         <div class="w-full h-8 bg-blue-400 absolute bottom-0 opacity-80"></div>
+                         <span class="absolute -bottom-6 text-xs text-gray-500 whitespace-nowrap">空 (高 12cm)</span>
+                     </div>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-auto mb-2 w-full md:w-1/2">
+                <button onclick="toggleBox('hint-q3')" class="flex-1 text-yellow-700 bg-yellow-50 hover:bg-yellow-100 py-2 rounded-lg border border-yellow-200 transition-colors font-bold text-sm"><i class="fa-regular fa-lightbulb"></i> 提示</button>
+                <button onclick="toggleBox('ans-q3')" class="flex-1 text-green-700 bg-green-50 hover:bg-green-100 py-2 rounded-lg border border-green-200 transition-colors font-bold text-sm"><i class="fa-solid fa-check"></i> 看答案</button>
+            </div>
+            <div id="hint-q3" class="hidden mt-3 bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm border border-yellow-200">
+                <strong class="">💡 提示：</strong>因为两个容器<strong class="">等底等高</strong>，水的体积不变。圆锥的水倒入圆柱，高度会变成原来的几分之几？
+            </div>
+            <div id="ans-q3" class="hidden mt-3 bg-green-50 text-green-800 p-4 rounded-lg text-sm border border-green-200 font-mono">
+                <strong class="">✅ 解答过程：</strong><br>
+                因为圆柱和圆锥<strong class="">等底等高</strong>，<br>
+                所以圆锥的体积是圆柱的 <span class="fraction"><span class="numerator">1</span><span class="denominator">3</span></span>。<br>
+                当水倒入圆柱后，底面积不变，水的体积不变，因此水深也是圆柱高度的 <span class="fraction"><span class="numerator">1</span><span class="denominator">3</span></span>。<br>
+                水深 = 12 × <span class="fraction"><span class="numerator">1</span><span class="denominator">3</span></span> = <strong class="text-red-600 text-lg">4 (cm)</strong>
+            </div>
+        </div>
+
+        <!-- 关卡 4: 巧运用 (带双圆锥示意图，答案保留π) -->
+        <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-teal-500 flex flex-col w-full">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-sm font-bold"><i class="fa-solid fa-calculator mr-1"></i> 第三关——巧运用</span>
+            </div>
+            <p class="text-gray-700 text-lg mb-6">计算下列圆锥的体积。（单位：cm）</p>
+            
+            <!-- 双圆锥示意图容器 -->
+            <div class="bg-gray-50 rounded-xl border border-gray-200 p-8 mb-6 flex flex-col md:flex-row justify-around items-center gap-8">
+                
+                <!-- 左侧圆锥 SVG (h=2, r=1) -->
+                <div class="flex flex-col items-center">
+                    <svg width="160" height="220" viewBox="0 0 200 260" class="overflow-visible">
+                        <!-- 圆锥主体 -->
+                        <ellipse cx="100" cy="40" rx="50" ry="10" fill="#f3f4f6" stroke="#9ca3af" stroke-width="2"></ellipse>
+                        <path d="M 50 40 L 100 190 L 150 40 Z" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="2"></path>
+                        <ellipse cx="100" cy="190" rx="50" ry="10" fill="none" stroke="#9ca3af" stroke-width="2"></ellipse>
+                        
+                        <!-- 高度标注 (h=2) -->
+                        <line x1="160" y1="40" x2="160" y2="190" class="dim-line"></line>
+                        <polygon points="160,35 155,45 165,45" class="dim-arrow"></polygon>
+                        <polygon points="160,195 155,185 165,185" class="dim-arrow"></polygon>
+                        <text x="170" y="120" class="dim-text">h=2</text>
+
+                        <!-- 半径标注 (r=1) -->
+                        <line x1="100" y1="190" x2="150" y2="190" class="dim-line"></line>
+                        <text x="125" y="185" class="dim-text" text-anchor="middle">r=1</text>
+                    </svg>
+                    <span class="mt-2 text-sm font-bold text-gray-500">左侧圆锥</span>
+                </div>
+
+                <!-- 右侧圆锥 SVG (h=3, d=3) -->
+                <div class="flex flex-col items-center">
+                    <svg width="160" height="220" viewBox="0 0 200 260" class="overflow-visible">
+                        <!-- 圆锥主体 (更高更宽) -->
+                        <ellipse cx="100" cy="20" rx="75" ry="15" fill="#f3f4f6" stroke="#9ca3af" stroke-width="2"></ellipse>
+                        <path d="M 25 20 L 100 200 L 175 20 Z" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"></path>
+                        <ellipse cx="100" cy="200" rx="75" ry="15" fill="none" stroke="#9ca3af" stroke-width="2"></ellipse>
+                        
+                        <!-- 高度标注 (h=3) -->
+                        <line x1="185" y1="20" x2="185" y2="200" class="dim-line"></line>
+                        <polygon points="185,15 180,25 190,25" class="dim-arrow"></polygon>
+                        <polygon points="185,205 180,195 190,195" class="dim-arrow"></polygon>
+                        <text x="195" y="115" class="dim-text">h=3</text>
+
+                        <!-- 直径标注 (d=3) -->
+                        <line x1="25" y1="220" x2="175" y2="220" class="dim-line"></line>
+                        <polygon points="25,220 30,210 20,210" class="dim-arrow"></polygon>
+                        <polygon points="175,220 170,210 180,210" class="dim-arrow"></polygon>
+                        <text x="100" y="240" class="dim-text" text-anchor="middle">d=3</text>
+                    </svg>
+                    <span class="mt-2 text-sm font-bold text-gray-500">右侧圆锥</span>
+                </div>
+
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white p-4 rounded-xl border border-gray-200 flex flex-col justify-between">
+                    <div class="text-lg text-gray-700 mb-4">
+                        <strong class="">左侧圆锥：</strong>高 6，底面<span class="text-blue-600">半径 2</span>
+                        <div class="text-xs text-gray-400 mt-1">(注意：图中比例为示意，计算请使用文字数据)</div>
+                    </div>
+                    <button onclick="toggleBox('ans-q4a')" class="w-full text-center bg-teal-100 text-teal-700 px-4 py-2 rounded-lg font-bold hover:bg-teal-200 transition-colors">查看答案</button>
+                    <div id="ans-q4a" class="hidden bg-white p-4 mt-3 rounded-lg border border-teal-100 text-sm font-mono">
+                        V = <span class="fraction"><span class="numerator">1</span><span class="denominator">3</span></span> × π × 2² × 6<br>
+                        &nbsp;&nbsp;= π × 4 × 2<br>
+                        &nbsp;&nbsp;= <strong class="text-red-600 text-lg">8π (cm³)</strong><br>
+                        <span class="text-xs text-gray-500 mt-1 block">*(若取 π≈3.14，则 V ≈ 25.12 cm³)*</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl border border-gray-200 flex flex-col justify-between">
+                    <div class="text-lg text-gray-700 mb-4">
+                        <strong class="">右侧圆锥：</strong>高 3，底面<span class="text-orange-600">直径 3</span>
+                        <div class="text-xs text-gray-400 mt-1">(注意：图中比例为示意，计算请使用文字数据)</div>
+                    </div>
+                    <button onclick="toggleBox('ans-q4b')" class="w-full text-center bg-teal-100 text-teal-700 px-4 py-2 rounded-lg font-bold hover:bg-teal-200 transition-colors">查看答案</button>
+                    <div id="ans-q4b" class="hidden bg-white p-4 mt-3 rounded-lg border border-teal-100 text-sm font-mono">
+                        半径 r = 3 ÷ 2 = 1.5 = <span class="fraction"><span class="numerator">3</span><span class="denominator">2</span></span><br>
+                        V = <span class="fraction"><span class="numerator">1</span><span class="denominator">3</span></span> × π × (<span class="fraction"><span class="numerator">3</span><span class="denominator">2</span></span>)² × 3<br>
+                        &nbsp;&nbsp;= π × <span class="fraction"><span class="numerator">9</span><span class="denominator">4</span></span><br>
+                        &nbsp;&nbsp;= <strong class="text-red-600 text-lg"><span class="fraction"><span class="numerator">9</span><span class="denominator">4</span></span>π (cm³)</strong><br>
+                        <span class="text-xs text-gray-500 mt-1 block">*(若取 π≈3.14，则 V ≈ 7.065 cm³)*</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关卡 5: 拓展延伸 (答案保留π) -->
+        <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-red-500 flex flex-col w-full">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-bold"><i class="fa-solid fa-mountain mr-1"></i> 第四关——拓展延伸</span>
+            </div>
+            <p class="text-gray-700 text-lg mb-6 leading-relaxed">
+                一个近似于圆锥形的碎石堆，底面周长是 <strong class="text-red-600 font-mono">12.56 m</strong>，高是 <strong class="text-red-600 font-mono">0.6 m</strong>。<br>
+                如果每立方米碎石大约重 <strong class="text-red-600 font-mono">2 吨</strong>，这堆碎石大约重多少吨？
+            </p>
+            <div class="flex gap-3 mt-auto mb-2 w-full md:w-1/2">
+                <button onclick="toggleBox('hint-q5')" class="flex-1 text-yellow-700 bg-yellow-50 hover:bg-yellow-100 py-2 rounded-lg border border-yellow-200 transition-colors font-bold text-sm"><i class="fa-regular fa-lightbulb"></i> 提示</button>
+                <button onclick="toggleBox('ans-q5')" class="flex-1 text-green-700 bg-green-50 hover:bg-green-100 py-2 rounded-lg border border-green-200 transition-colors font-bold text-sm"><i class="fa-solid fa-check"></i> 看答案</button>
+            </div>
+            <div id="hint-q5" class="hidden mt-3 bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm border border-yellow-200">
+                <strong class="">💡 提示：</strong>先根据周长 C=2πr 求出半径 r，再求体积 V，最后乘以密度。
+            </div>
+            <div id="ans-q5" class="hidden mt-3 bg-green-50 text-green-800 p-4 rounded-lg text-sm border border-green-200 font-mono">
+                <strong class="">✅ 解答过程：</strong><br>
+                1. 求半径：r = 12.56 ÷ 3.14 ÷ 2 = <strong class="">2 (m)</strong><br>
+                2. 求体积：V = <span class="fraction"><span class="numerator">1</span><span class="denominator">3</span></span> × π × 2² × 0.6<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= π × 4 × 0.2 = <strong class="">0.8π (m³)</strong><br>
+                3. 求重量：0.8π × 2 = <strong class="text-red-600 text-lg">1.6π (吨)</strong><br>
+                <span class="text-xs text-gray-500 mt-1 block">*(若取 π≈3.14，则重 ≈ 5.024 吨)*</span>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- ================= 交互逻辑 JavaScript ================= -->
+    <script>
+        let step = 0; 
+        let isAnimating = false; 
+        let isFormulaVisible = false;
+
+        const waterColors = [
+            { main: '#4285F4', top: '#2b6cb0', name: '蓝色', textClass: 'text-blue-600' },
+            { main: '#34A853', top: '#276749', name: '绿色', textClass: 'text-green-600' },
+            { main: '#FBBC05', top: '#d69e2e', name: '黄色', textClass: 'text-yellow-600' }
+        ];
+
+        const coneRect = document.getElementById('cone-water-rect');
+        const coneTop = document.getElementById('cone-water-top');
+        const btnPour = document.getElementById('btn-pour');
+        const statusBadge = document.getElementById('status-badge');
+        const stepCount = document.getElementById('step-count');
+        const instructionText = document.getElementById('instruction-text');
+
+        function toggleBox(elementId) {
+            const el = document.getElementById(elementId);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                el.classList.add('animate-pulse');
+                setTimeout(() => el.classList.remove('animate-pulse'), 500);
+            } else {
+                el.classList.add('hidden');
+            }
+        }
+
+        function toggleFormula() {
+            isFormulaVisible = !isFormulaVisible;
+            const container = document.getElementById('formula-container');
+            const btn = document.getElementById('btn-toggle-formula');
+            
+            if (isFormulaVisible) {
+                container.classList.remove('max-h-0', 'opacity-0');
+                container.classList.add('max-h-[200px]', 'opacity-100');
+                btn.innerHTML = `<i class="fa-solid fa-eye-slash text-lg"></i> <span>隐藏推导结论</span>`;
+                btn.classList.replace('text-indigo-600', 'text-gray-500');
+                btn.classList.replace('bg-indigo-50', 'bg-gray-50');
+                btn.classList.replace('border-indigo-200', 'border-gray-200');
+                btn.classList.replace('hover:bg-indigo-100', 'hover:bg-gray-100');
+            } else {
+                container.classList.remove('max-h-[200px]', 'opacity-100');
+                container.classList.add('max-h-0', 'opacity-0');
+                btn.innerHTML = `<i class="fa-solid fa-eye text-lg"></i> <span>揭晓推导结论</span>`;
+                btn.classList.replace('text-gray-500', 'text-indigo-600');
+                btn.classList.replace('bg-gray-50', 'bg-indigo-50');
+                btn.classList.replace('border-gray-200', 'border-indigo-200');
+                btn.classList.replace('hover:bg-gray-100', 'hover:bg-indigo-100');
+            }
+        }
+
+        function updateStatus(text, type = 'info') {
+            const icon = statusBadge.querySelector('i');
+            const span = statusBadge.querySelector('span');
+            span.innerText = text;
+            
+            statusBadge.className = 'absolute top-6 left-1/2 transform -translate-x-1/2 px-6 py-2 rounded-full font-bold text-lg shadow-sm transition-colors duration-300 z-10 flex items-center whitespace-nowrap';
+            
+            if (type === 'info') {
+                statusBadge.classList.add('bg-yellow-100', 'text-yellow-700');
+                icon.className = 'fa-solid fa-circle-notch fa-spin mr-2';
+            } else if (type === 'success') {
+                statusBadge.classList.add('bg-green-100', 'text-green-700');
+                icon.className = 'fa-solid fa-check-circle mr-2 text-xl';
+            } else if (type === 'ready') {
+                statusBadge.classList.add('bg-blue-100', 'text-blue-700');
+                icon.className = 'fa-solid fa-hand-pointer mr-2';
+            }
+        }
+
+        function setConeState(isFull, colorIndex = 0) {
+            if (isFull) {
+                const color = waterColors[colorIndex];
+                coneRect.setAttribute('fill', color.main);
+                coneTop.setAttribute('fill', color.top);
+                coneRect.setAttribute('height', '300');
+                coneRect.setAttribute('y', '50');
+                coneTop.setAttribute('cy', '50');
+                coneTop.setAttribute('rx', '100');
+                coneTop.setAttribute('ry', '20');
+                coneTop.setAttribute('opacity', '0.9');
+            } else {
+                coneRect.setAttribute('height', '0');
+                coneRect.setAttribute('y', '350');
+                coneTop.setAttribute('cy', '350');
+                coneTop.setAttribute('rx', '0');
+                coneTop.setAttribute('ry', '0');
+                coneTop.setAttribute('opacity', '0');
+            }
+        }
+
+        function pourWater() {
+            if (step >= 3 || isAnimating) return;
+            isAnimating = true;
+            
+            const currentColor = waterColors[step];
+
+            btnPour.classList.add('opacity-50', 'cursor-not-allowed');
+            updateStatus(`正在装入第 ${step + 1} 杯（${currentColor.name}）...`, 'info');
+            instructionText.innerHTML = `即将倒入 <strong class="${currentColor.textClass} text-xl">第 ${step + 1} 杯水（${currentColor.name}）</strong>。<br>请观察它在无刻度圆柱中占据的空间。`;
+
+            setConeState(true, step);
+
+            setTimeout(() => {
+                updateStatus(`正在将 ${currentColor.name} 的水倒入圆柱...`, 'info');
+                
+                setConeState(false, step);
+                
+                const currentLayerIndex = step + 1;
+                const layerRect = document.getElementById(`water-layer-${currentLayerIndex}`);
+                const layerTop = document.getElementById(`water-top-${currentLayerIndex}`);
+                
+                const targetY = 350 - (currentLayerIndex * 100); 
+                
+                layerRect.setAttribute('height', '100');
+                layerRect.setAttribute('y', targetY);
+                layerTop.setAttribute('cy', targetY);
+                layerTop.setAttribute('opacity', '0.9');
+
+                document.getElementById(`pb-${currentLayerIndex}`).style.width = '33.333%';
+                step++; 
+                stepCount.innerText = step;
+
+                setTimeout(() => {
+                    if (step === 3) {
+                        updateStatus("实验完美成功！", 'success');
+                        instructionText.innerHTML = `🎉 <strong class="text-green-600 text-xl">圆柱已被完全填满！</strong><br>蓝、绿、黄 3 份体积相同的圆锥水，刚好组成了一个完整的圆柱。<br><br><span class="text-indigo-600 font-bold"><i class="fa-solid fa-arrow-up"></i> 现在，你可以点击右上角的“揭晓推导结论”来验证公式了！</span>`;
+                        btnPour.innerHTML = `<i class="fa-solid fa-check-circle"></i> 实验已完成`;
+                        
+                        const revealBtn = document.getElementById('btn-toggle-formula');
+                        if(!isFormulaVisible) {
+                            revealBtn.classList.add('animate-pulse');
+                            setTimeout(() => revealBtn.classList.remove('animate-pulse'), 3000);
+                        }
+                    } else {
+                        updateStatus(`已倒入 ${step} 杯，请继续`, 'ready');
+                        instructionText.innerHTML = `圆柱中已经有了 <strong class="text-gray-800 text-xl">${step}</strong> 层水。<br>点击按钮，用下一种颜色的水继续填充！`;
+                        btnPour.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                    isAnimating = false; 
+                }, 900);
+
+            }, 900);
+        }
+
+        function resetExperiment() {
+            if (isAnimating) return;
+            
+            step = 0;
+            stepCount.innerText = "0";
+            
+            setConeState(false, 0);
+            
+            for (let i = 1; i <= 3; i++) {
+                const layerRect = document.getElementById(`water-layer-${i}`);
+                const layerTop = document.getElementById(`water-top-${i}`);
+                const baseY = 350 - ((i - 1) * 100);
+                
+                layerRect.setAttribute('height', '0');
+                layerRect.setAttribute('y', baseY);
+                layerTop.setAttribute('cy', baseY);
+                layerTop.setAttribute('opacity', '0');
+                document.getElementById(`pb-${i}`).style.width = '0%';
+            }
+            
+            updateStatus("已清空，请点击“开始倒水”", 'ready');
+            btnPour.innerHTML = `<i class="fa-solid fa-fill-drip"></i> 装满水并倒入`;
+            btnPour.classList.remove('opacity-50', 'cursor-not-allowed');
+            
+            if (isFormulaVisible) toggleFormula();
+            
+            instructionText.innerHTML = `注意观察左侧没有刻度线的圆柱。<br><br>我们将使用圆锥装满水，每次使用<strong class="text-blue-500">不同颜色</strong>来区分倒入的次数。看看装满圆柱究竟需要几杯？`;
+        }
+
+        window.onload = () => {
+            resetExperiment();
+        };
+    </script>
+
+</body></html>

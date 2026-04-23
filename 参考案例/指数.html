@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>探索指数的奥秘 - 互动课堂演示</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        eduBlue: '#4285F4',
+                        eduRed: '#EA4335',
+                        eduYellow: '#FBBC05',
+                        eduGreen: '#34A853',
+                        eduBg: '#F5F7FB'
+                    },
+                    fontFamily: {
+                        sans: ['Microsoft YaHei', 'PingFang SC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 美化滑动条以便于平板触控 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 28px;
+            width: 28px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            border: 3px solid currentColor;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 10px;
+            cursor: pointer;
+            background: #E5E7EB;
+            border-radius: 5px;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        
+        /* 动态进度条过渡效果 */
+        .bar-transition {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="bg-eduBg text-gray-800 antialiased min-h-screen p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto flex flex-col gap-6">
+        
+        <!-- 头部标题 -->
+        <header class="bg-eduBlue text-white rounded-2xl p-6 shadow-md flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-bold mb-2 flex items-center gap-3">
+                    <i class="fa-solid fa-rocket"></i> 探索指数的奥秘
+                </h1>
+                <p class="text-blue-100 text-lg">拖动滑块，亲自体验数字裂变的魔法！</p>
+            </div>
+            <div class="hidden md:block">
+                <img src="https://api.zcat.cn/udata/718570/png/e9b1aed17e76a7b7402289a51b9e4d30.png" alt="Math Decoration" class="h-20 object-contain rounded-xl">
+            </div>
+        </header>
+
+        <!-- 模块一：认识指数 -->
+        <section class="bg-white rounded-2xl p-6 shadow-lg border-t-4 border-eduBlue">
+            <h2 class="text-2xl font-bold text-gray-700 mb-6 flex items-center gap-2">
+                <span class="bg-eduBlue text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
+                什么是指数？
+            </h2>
+            
+            <div class="grid md:grid-cols-2 gap-8 items-center">
+                <!-- 控制区 -->
+                <div class="bg-blue-50 p-6 rounded-xl flex flex-col gap-6">
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="font-bold text-gray-700 text-lg">底数 (Base) <span class="text-eduBlue font-black" id="val-base">2</span></label>
+                        </div>
+                        <input type="range" id="slider-base" min="1" max="10" step="1" value="2" class="text-eduBlue">
+                        <p class="text-sm text-gray-500 mt-1">表示要被相乘的那个数字</p>
+                    </div>
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="font-bold text-gray-700 text-lg">指数 (Exponent) <span class="text-eduYellow font-black" id="val-exp">3</span></label>
+                        </div>
+                        <input type="range" id="slider-exp" min="1" max="6" step="1" value="3" class="text-eduYellow">
+                        <p class="text-sm text-gray-500 mt-1">表示底数自己相乘的次数</p>
+                    </div>
+                </div>
+
+                <!-- 展示区 -->
+                <div class="flex flex-col items-center justify-center py-4">
+                    <div class="text-6xl font-black text-gray-800 mb-6 font-mono">
+                        <span id="display-base" class="text-eduBlue">2</span><sup id="display-exp" class="text-eduYellow text-4xl">3</sup>
+                    </div>
+                    
+                    <div class="bg-gray-100 px-6 py-4 rounded-xl text-xl text-gray-600 font-mono tracking-widest text-center min-h-[80px] flex items-center justify-center w-full break-all" id="display-expand">
+                        2 × 2 × 2
+                    </div>
+                    
+                    <div class="mt-6 flex items-center gap-4 text-3xl font-bold">
+                        <span>=</span>
+                        <span class="text-5xl text-eduGreen px-4 py-2 bg-green-50 border-2 border-eduGreen rounded-xl shadow-sm min-w-[120px] text-center" id="display-result">8</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块二：指数爆炸对比 -->
+        <section class="bg-white rounded-2xl p-6 shadow-lg border-t-4 border-eduRed">
+            <h2 class="text-2xl font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span class="bg-eduRed text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+                指数爆炸的恐怖威力！
+            </h2>
+            <p class="text-gray-500 mb-6 ml-10">假设细胞分裂：线性是一天长 2 个，指数是一天翻一倍，看看 10 天后的差距。</p>
+
+            <div class="bg-red-50 p-6 rounded-xl mb-6">
+                <div class="flex justify-between mb-2">
+                    <label class="font-bold text-gray-700 text-xl">经过的时间（天数）： <span class="text-eduRed font-black text-2xl" id="val-days">5</span> 天</label>
+                </div>
+                <input type="range" id="slider-days" min="1" max="10" step="1" value="5" class="text-eduRed">
+            </div>
+
+            <!-- 对比条 -->
+            <div class="space-y-6 ml-2 md:ml-10">
+                <div>
+                    <div class="flex justify-between text-sm font-bold text-gray-600 mb-1">
+                        <span>线性增长 ( 2 × 天数 )</span>
+                        <span id="val-linear" class="text-gray-800">10</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-8 overflow-hidden relative shadow-inner">
+                        <div id="bar-linear" class="bg-gray-400 h-8 rounded-full bar-transition flex items-center justify-end pr-2 text-white font-bold text-xs" style="width: 1%;"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-sm font-bold text-gray-600 mb-1">
+                        <span class="text-eduRed">指数增长 ( 2 的 天数 次方 )</span>
+                        <span id="val-expo" class="text-eduRed text-xl">32</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-10 overflow-hidden relative shadow-inner border border-red-100">
+                        <!-- 使用渐变色表示威力 -->
+                        <div id="bar-expo" class="bg-gradient-to-r from-orange-400 to-eduRed h-10 rounded-full bar-transition flex items-center justify-end pr-3 text-white font-bold shadow-md" style="width: 3%;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 模块三：函数图像 -->
+        <section class="bg-white rounded-2xl p-6 shadow-lg border-t-4 border-eduGreen">
+            <h2 class="text-2xl font-bold text-gray-700 mb-6 flex items-center gap-2">
+                <span class="bg-eduGreen text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
+                指数函数的魔法曲线 <span class="font-mono text-lg ml-2">y = a<sup>x</sup></span>
+            </h2>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- 控制面板 -->
+                <div class="md:col-span-1 bg-green-50 p-6 rounded-xl flex flex-col justify-center">
+                    <h3 class="font-bold text-gray-700 mb-4 text-lg">调节底数 a 的值：</h3>
+                    <div class="text-center mb-4">
+                        <span class="text-4xl font-black text-eduGreen" id="val-func-a">2.0</span>
+                    </div>
+                    <!-- 设定范围 0.1 到 4.0，排除0 -->
+                    <input type="range" id="slider-func" min="0.1" max="4.0" step="0.1" value="2.0" class="text-eduGreen mb-6">
+                    
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-green-100 text-sm text-gray-600 space-y-2">
+                        <p><i class="fa-solid fa-circle-info text-eduYellow"></i> 观察重点：</p>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li id="hint-1">当 <strong class="text-eduRed">a > 1</strong> 时，曲线向上飞升（单调递增）。</li>
+                            <li id="hint-2">当 <strong class="text-eduRed">0 < a < 1</strong> 时，曲线平缓滑落（单调递减）。</li>
+                            <li>不管 a 是多少，曲线永远穿过 <strong class="text-eduBlue">(0, 1)</strong> 点！</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Canvas 画布区 -->
+                <div class="md:col-span-2 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center p-2 overflow-hidden relative h-[350px]">
+                    <canvas id="mathCanvas" width="600" height="350" class="max-w-full rounded-lg"></canvas>
+                    <!-- 装饰小图 -->
+                    <img src="https://api.zcat.cn/udata/718570/png/c08eadd88ac5f71b980d555fe5cf2f8a.png" alt="Teacher Owl" class="absolute bottom-2 right-2 h-24 opacity-80 pointer-events-none">
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // 模块一：认识指数逻辑
+        // ==========================================
+        const sliderBase = document.getElementById('slider-base');
+        const sliderExp = document.getElementById('slider-exp');
+        const valBase = document.getElementById('val-base');
+        const valExp = document.getElementById('val-exp');
+        const displayBase = document.getElementById('display-base');
+        const displayExp = document.getElementById('display-exp');
+        const displayExpand = document.getElementById('display-expand');
+        const displayResult = document.getElementById('display-result');
+
+        function updateModule1() {
+            const a = parseInt(sliderBase.value);
+            const n = parseInt(sliderExp.value);
+            
+            // 更新UI文字
+            valBase.innerText = a;
+            valExp.innerText = n;
+            displayBase.innerText = a;
+            displayExp.innerText = n;
+            
+            // 生成展开式 (例如: 2 × 2 × 2)
+            let expandStr = Array(n).fill(a).join(' <span class="text-gray-400 mx-1">×</span> ');
+            displayExpand.innerHTML = expandStr;
+            
+            // 计算结果并添加简单的动画类
+            const result = Math.pow(a, n);
+            displayResult.innerText = result.toLocaleString();
+            
+            // 结果跳动动画
+            displayResult.style.transform = 'scale(1.1)';
+            setTimeout(() => { displayResult.style.transform = 'scale(1)'; }, 150);
+        }
+
+        sliderBase.addEventListener('input', updateModule1);
+        sliderExp.addEventListener('input', updateModule1);
+        updateModule1(); // 初始化
+
+        // ==========================================
+        // 模块二：指数爆炸对比逻辑
+        // ==========================================
+        const sliderDays = document.getElementById('slider-days');
+        const valDays = document.getElementById('val-days');
+        const valLinear = document.getElementById('val-linear');
+        const valExpo = document.getElementById('val-expo');
+        const barLinear = document.getElementById('bar-linear');
+        const barExpo = document.getElementById('bar-expo');
+        
+        // 设定基准最大值，计算最大天数10天时的指数值 2^10 = 1024
+        const MAX_EXPO_VAL = Math.pow(2, 10); 
+
+        function updateModule2() {
+            const days = parseInt(sliderDays.value);
+            valDays.innerText = days;
+            
+            const linearResult = 2 * days;
+            const expoResult = Math.pow(2, days);
+            
+            valLinear.innerText = linearResult.toLocaleString();
+            valExpo.innerText = expoResult.toLocaleString();
+            
+            // 计算进度条百分比 (以指数最大值1024为100%分母，为了在较小天数也能看到，加个最小宽度保护)
+            let linearPercent = (linearResult / MAX_EXPO_VAL) * 100;
+            let expoPercent = (expoResult / MAX_EXPO_VAL) * 100;
+            
+            // 确保哪怕数字小，条也能看见一点点
+            barLinear.style.width = Math.max(linearPercent, 0.5) + '%';
+            barExpo.style.width = Math.max(expoPercent, 0.5) + '%';
+            
+            // 当天数较大时显示内部数字
+            barLinear.innerHTML = linearPercent > 5 ? linearResult : '';
+            barExpo.innerHTML = expoPercent > 5 ? expoResult : '';
+        }
+
+        sliderDays.addEventListener('input', updateModule2);
+        updateModule2(); // 初始化
+
+        // ==========================================
+        // 模块三：Canvas 绘制函数图像逻辑
+        // ==========================================
+        const canvas = document.getElementById('mathCanvas');
+        const ctx = canvas.getContext('2d');
+        const sliderFunc = document.getElementById('slider-func');
+        const valFuncA = document.getElementById('val-func-a');
+        
+        const hint1 = document.getElementById('hint-1');
+        const hint2 = document.getElementById('hint-2');
+
+        // 画布尺寸和坐标系设置
+        const width = canvas.width;
+        const height = canvas.height;
+        const originX = width / 2;      // 原点X在正中间
+        const originY = height * 0.8;   // 原点Y偏下，给正半轴留空间
+        const unit = 50;                // 50像素代表 1个数学单位
+
+        function drawGrid() {
+            ctx.clearRect(0, 0, width, height);
+            ctx.lineWidth = 1;
+            
+            // 绘制网格线 (浅灰色)
+            ctx.strokeStyle = '#f0f0f0';
+            for(let i=0; i<width; i+=unit/2) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, height); ctx.stroke();
+            }
+            for(let i=0; i<height; i+=unit/2) {
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(width, i); ctx.stroke();
+            }
+
+            // 绘制坐标轴 (深灰色)
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            // X轴
+            ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(width, originY); ctx.stroke();
+            // Y轴
+            ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, height); ctx.stroke();
+
+            // 标原点和 (0,1) 点
+            ctx.fillStyle = '#666';
+            ctx.font = '14px Arial';
+            ctx.fillText('O', originX - 15, originY + 15);
+            ctx.fillText('x', width - 15, originY - 10);
+            ctx.fillText('y', originX + 10, 15);
+
+            // 绘制 (0,1) 关键点
+            const pt1_y = originY - 1 * unit;
+            ctx.fillStyle = '#4285F4'; // 蓝色关键点
+            ctx.beginPath();
+            ctx.arc(originX, pt1_y, 5, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillText('(0, 1)', originX + 10, pt1_y + 5);
+        }
+
+        function drawCurve(a) {
+            ctx.strokeStyle = '#34A853'; // 绿色曲线
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            let isFirst = true;
+            // 遍历X像素点绘图
+            for(let px = 0; px <= width; px+=2) {
+                // 将屏幕像素X转换为数学坐标x
+                let math_x = (px - originX) / unit;
+                // 计算 y = a^x
+                let math_y = Math.pow(a, math_x);
+                // 将数学坐标y转换为屏幕像素Y
+                let py = originY - (math_y * unit);
+                
+                if (isFirst) {
+                    ctx.moveTo(px, py);
+                    isFirst = false;
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function updateModule3() {
+            const a = parseFloat(sliderFunc.value);
+            
+            // 规避 a=1 的情况（虽然严格来说也是合法的，但通常指数函数讨论 a!=1）
+            let displayA = a;
+            if (a === 1.0) displayA = 1.1; // 视觉上不让它完全平
+            
+            valFuncA.innerText = displayA.toFixed(1);
+            
+            // 状态提示高亮
+            if (displayA > 1) {
+                hint1.classList.add('bg-yellow-100', 'p-1', 'rounded');
+                hint2.classList.remove('bg-yellow-100', 'p-1', 'rounded');
+            } else {
+                hint2.classList.add('bg-yellow-100', 'p-1', 'rounded');
+                hint1.classList.remove('bg-yellow-100', 'p-1', 'rounded');
+            }
+
+            // 重绘图表
+            drawGrid();
+            drawCurve(displayA);
+        }
+
+        sliderFunc.addEventListener('input', updateModule3);
+        // 初始化图表
+        // 延迟一点确保字体加载
+        setTimeout(updateModule3, 100); 
+
+    </script>
+</body>
+</html>

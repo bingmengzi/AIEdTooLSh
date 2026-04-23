@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>勾股定理互动演示 - 课堂探索</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 保持系统默认中文字体，优化渲染 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Microsoft YaHei", sans-serif;
+            background-color: #F5F7FB; /* 护眼浅蓝灰背景 */
+            user-select: none; /* 防止演示时误选文字 */
+        }
+        
+        /* 自定义滑块样式以适配平板触控 */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;  /* 添加标准属性 */
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid currentColor;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #E2E8F0;
+            border-radius: 4px;
+        }
+        
+        /* 颜色类快捷绑定 */
+        .theme-a { color: #4285F4; } /* 蓝 - 直角边a */
+        .theme-b { color: #EA4335; } /* 红 - 直角边b */
+        .theme-c { color: #34A853; } /* 绿 - 斜边c */
+        
+        .bg-theme-a { background-color: #4285F4; }
+        .bg-theme-b { background-color: #EA4335; }
+        .bg-theme-c { background-color: #34A853; }
+
+        canvas {
+            touch-action: none; /* 防止在画布上滑动时触发页面滚动 */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 md:p-8">
+
+    <!-- 主体卡片容器 -->
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col">
+        
+        <!-- 头部标题区 -->
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center text-2xl shadow-md">
+                    <i class="fa-solid fa-shapes"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-800 tracking-wide">探索勾股定理</h1>
+                    <p class="text-gray-500 mt-1 text-sm md:text-base">拖动三角形顶点或滑动下方滑块，观察面积与公式的变化</p>
+                </div>
+            </div>
+            <div class="hidden md:block bg-white px-6 py-3 rounded-2xl shadow-sm border border-gray-100">
+                <span class="text-2xl font-bold font-serif text-gray-700">
+                    <span class="theme-a">a²</span> + <span class="theme-b">b²</span> = <span class="theme-c">c²</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- 交互与数据区 (左右分栏) -->
+        <div class="flex flex-col lg:flex-row p-6 md:p-8 gap-8">
+            
+            <!-- 左侧：图形交互区 -->
+            <div class="flex-1 relative bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden min-h-[400px] md:min-h-[500px]">
+                <canvas id="geometryCanvas" width="600" height="600" class="max-w-full h-auto cursor-crosshair"></canvas>
+                
+                <!-- 操作提示 -->
+                <div class="absolute top-4 left-4 bg-white/80 backdrop-blur px-3 py-1.5 rounded-lg text-xs text-gray-500 shadow-sm border border-gray-100 pointer-events-none">
+                    <i class="fa-solid fa-hand-pointer mr-1"></i> 可拖动圆点改变边长
+                </div>
+            </div>
+
+            <!-- 右侧：控制与计算面板 -->
+            <div class="w-full lg:w-[400px] flex flex-col gap-6">
+                
+                <!-- 滑块控制卡片 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-700 mb-4 border-l-4 border-yellow-400 pl-3">设定直角边长度</h3>
+                    
+                    <!-- 滑块 a -->
+                    <div class="mb-6">
+                        <div class="flex justify-between mb-2">
+                            <label class="font-bold theme-a">底边 a</label>
+                            <span class="font-bold theme-a bg-blue-50 px-2 rounded" id="valA">3</span>
+                        </div>
+                        <input type="range" id="sliderA" class="theme-a" min="2" max="10" step="1" value="3">
+                    </div>
+                    
+                    <!-- 滑块 b -->
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="font-bold theme-b">高 b</label>
+                            <span class="font-bold theme-b bg-red-50 px-2 rounded" id="valB">4</span>
+                        </div>
+                        <input type="range" id="sliderB" class="theme-b" min="2" max="10" step="1" value="4">
+                    </div>
+                </div>
+
+                <!-- 实时计算卡片 -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 flex-1 flex flex-col">
+                    <h3 class="text-lg font-bold text-gray-700 mb-6 border-l-4 border-green-500 pl-3">面积验证</h3>
+                    
+                    <div class="space-y-4 flex-1">
+                        <!-- a平方 -->
+                        <div class="flex justify-between items-center text-lg">
+                            <span class="theme-a font-semibold">底边正方形面积 (a²)</span>
+                            <span class="font-mono bg-blue-50 px-3 py-1 rounded-lg theme-a" id="calcA2">3² = 9</span>
+                        </div>
+                        
+                        <!-- b平方 -->
+                        <div class="flex justify-between items-center text-lg">
+                            <span class="theme-b font-semibold">高正方形面积 (b²)</span>
+                            <span class="font-mono bg-red-50 px-3 py-1 rounded-lg theme-b" id="calcB2">4² = 16</span>
+                        </div>
+
+                        <div class="border-t-2 border-dashed border-gray-200 my-2"></div>
+                        
+                        <!-- 和 -->
+                        <div class="flex justify-between items-center text-lg">
+                            <span class="text-gray-600 font-bold">面积之和 (a² + b²)</span>
+                            <span class="font-mono bg-gray-100 px-3 py-1 rounded-lg text-gray-700 font-bold" id="calcSum">9 + 16 = 25</span>
+                        </div>
+
+                        <!-- c平方 -->
+                        <div class="flex justify-between items-center text-lg mt-6 p-3 bg-green-50 rounded-xl border border-green-100">
+                            <span class="theme-c font-bold">斜边正方形面积 (c²)</span>
+                            <span class="font-mono bg-white px-3 py-1 rounded-lg theme-c font-bold shadow-sm" id="calcC2">c² = 25</span>
+                        </div>
+                    </div>
+
+                    <!-- 结论提示 -->
+                    <div class="mt-6 text-center bg-yellow-50 text-yellow-700 py-3 rounded-xl font-bold flex justify-center items-center gap-2 transition-transform duration-300 transform hover:scale-105">
+                        <i class="fa-solid fa-check-circle text-green-500 text-xl"></i>
+                        <span>两条直角边的平方和 = 斜边的平方</span>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 逻辑 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- 变量定义 ---
+            const canvas = document.getElementById('geometryCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            const sliderA = document.getElementById('sliderA');
+            const sliderB = document.getElementById('sliderB');
+            
+            const domValA = document.getElementById('valA');
+            const domValB = document.getElementById('valB');
+            const calcA2 = document.getElementById('calcA2');
+            const calcB2 = document.getElementById('calcB2');
+            const calcSum = document.getElementById('calcSum');
+            const calcC2 = document.getElementById('calcC2');
+
+            // 尺寸与坐标系设定
+            const width = canvas.width;
+            const height = canvas.height;
+            const UNIT = 25; // 1个单位 = 25像素
+            
+            // 直角顶点 C 的固定位置 (为了留出画正方形的空间，放在偏左下的位置)
+            const cx = 200;
+            const cy = 400;
+
+            // 状态变量
+            let a = parseInt(sliderA.value);
+            let b = parseInt(sliderB.value);
+            
+            // 交互控制状态
+            let isDraggingA = false;
+            let isDraggingB = false;
+
+            // 颜色定义
+            const colors = {
+                a: { line: '#4285F4', fill: 'rgba(66, 133, 244, 0.15)', text: '#4285F4' }, // 蓝
+                b: { line: '#EA4335', fill: 'rgba(234, 67, 53, 0.15)', text: '#EA4335' },  // 红
+                c: { line: '#34A853', fill: 'rgba(52, 168, 83, 0.15)', text: '#34A853' },  // 绿
+                triangle: 'rgba(251, 188, 5, 0.2)', // 中间三角形填充淡黄
+                handle: '#ffffff'
+            };
+
+            // --- 核心更新逻辑 ---
+            function updateState() {
+                // 更新DOM数据
+                domValA.textContent = a;
+                domValB.textContent = b;
+                
+                let a2 = a * a;
+                let b2 = b * b;
+                let sum = a2 + b2;
+                let c = Math.sqrt(sum);
+                
+                calcA2.textContent = `${a}² = ${a2}`;
+                calcB2.textContent = `${b}² = ${b2}`;
+                calcSum.textContent = `${a2} + ${b2} = ${sum}`;
+                
+                // 处理如果是整数展示优化
+                let cStr = Number.isInteger(c) ? c : c.toFixed(2);
+                calcC2.innerHTML = `(${cStr})² = ${sum}`;
+
+                // 重新绘制画布
+                draw();
+            }
+
+            // --- 绘制逻辑 ---
+            function draw() {
+                // 清空画布
+                ctx.clearRect(0, 0, width, height);
+
+                // 计算三个顶点 (屏幕坐标系，y向下为正)
+                const ptC = { x: cx, y: cy };
+                const ptA = { x: cx + a * UNIT, y: cy }; // 底边向右
+                const ptB = { x: cx, y: cy - b * UNIT }; // 高边向上
+
+                // 1. 绘制正方形 A (底边下方)
+                drawPolygon(
+                    [ptC, ptA, { x: ptA.x, y: ptA.y + a * UNIT }, { x: ptC.x, y: ptC.y + a * UNIT }],
+                    colors.a.fill, colors.a.line
+                );
+                drawText(`面积 = ${a*a}`, ptC.x + (a*UNIT)/2, ptC.y + (a*UNIT)/2, colors.a.text);
+
+                // 2. 绘制正方形 B (高边左侧)
+                drawPolygon(
+                    [ptB, ptC, { x: ptC.x - b * UNIT, y: ptC.y }, { x: ptB.x - b * UNIT, y: ptB.y }],
+                    colors.b.fill, colors.b.line
+                );
+                drawText(`面积 = ${b*b}`, ptC.x - (b*UNIT)/2, ptC.y - (b*UNIT)/2, colors.b.text);
+
+                // 3. 绘制正方形 C (斜边外侧)
+                // 计算向外的法向量 (右上方向)
+                const dy = b * UNIT;
+                const dx = a * UNIT;
+                const ptA_prime = { x: ptA.x + dy, y: ptA.y - dx };
+                const ptB_prime = { x: ptB.x + dy, y: ptB.y - dx };
+                drawPolygon(
+                    [ptA, ptA_prime, ptB_prime, ptB],
+                    colors.c.fill, colors.c.line
+                );
+                // 斜边正方形中心点
+                const centerC_x = (ptA.x + ptA_prime.x + ptB_prime.x + ptB.x) / 4;
+                const centerC_y = (ptA.y + ptA_prime.y + ptB_prime.y + ptB.y) / 4;
+                drawText(`面积 = ${a*a + b*b}`, centerC_x, centerC_y, colors.c.text);
+
+                // 4. 绘制中心直角三角形
+                drawPolygon([ptC, ptA, ptB], colors.triangle, '#333333', 2);
+                
+                // 绘制直角符号
+                ctx.beginPath();
+                ctx.moveTo(cx + 15, cy);
+                ctx.lineTo(cx + 15, cy - 15);
+                ctx.lineTo(cx, cy - 15);
+                ctx.strokeStyle = '#333333';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 5. 绘制边长标签
+                drawText(`a=${a}`, ptC.x + (a*UNIT)/2, ptC.y - 15, colors.a.text, true);
+                drawText(`b=${b}`, ptC.x + 20, ptC.y - (b*UNIT)/2, colors.b.text, true);
+                
+                let cLen = Math.sqrt(a*a + b*b);
+                let cText = Number.isInteger(cLen) ? `c=${cLen}` : `c≈${cLen.toFixed(1)}`;
+                drawText(cText, (ptA.x+ptB.x)/2 - 20, (ptA.y+ptB.y)/2 - 20, colors.c.text, true);
+
+                // 6. 绘制拖动控制手柄 (圆点)
+                drawHandle(ptA.x, ptA.y, colors.a.line); // 控制a
+                drawHandle(ptB.x, ptB.y, colors.b.line); // 控制b
+            }
+
+            // 辅助绘图函数
+            function drawPolygon(points, fillStyle, strokeStyle, lineWidth = 2) {
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.closePath();
+                ctx.fillStyle = fillStyle;
+                ctx.fill();
+                ctx.strokeStyle = strokeStyle;
+                ctx.lineWidth = lineWidth;
+                ctx.stroke();
+            }
+
+            function drawText(text, x, y, color, bold = false) {
+                ctx.fillStyle = color;
+                ctx.font = `${bold ? 'bold ' : ''}16px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // 添加白色发光背景以增强可读性
+                ctx.shadowColor = 'white';
+                ctx.shadowBlur = 4;
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = 'white';
+                ctx.strokeText(text, x, y);
+                
+                ctx.shadowBlur = 0;
+                ctx.fillText(text, x, y);
+            }
+
+            function drawHandle(x, y, color) {
+                ctx.beginPath();
+                ctx.arc(x, y, 10, 0, Math.PI * 2);
+                ctx.fillStyle = colors.handle;
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = color;
+                ctx.stroke();
+                // 内部小点
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+            }
+
+            // --- 交互事件监听 ---
+            
+            // 1. 滑块控制
+            sliderA.addEventListener('input', (e) => {
+                a = parseInt(e.target.value);
+                updateState();
+            });
+            
+            sliderB.addEventListener('input', (e) => {
+                b = parseInt(e.target.value);
+                updateState();
+            });
+
+            // 2. Canvas 拖拽控制 (兼容鼠标与触摸)
+            function getEventPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                // 处理触摸或鼠标事件
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                
+                // 考虑画布内部缩放比例
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY
+                };
+            }
+
+            function handleStart(e) {
+                const pos = getEventPos(e);
+                const ptA = { x: cx + a * UNIT, y: cy };
+                const ptB = { x: cx, y: cy - b * UNIT };
+                
+                // 判断是否点击到了手柄 (设定判定半径为20)
+                if (Math.hypot(pos.x - ptA.x, pos.y - ptA.y) < 20) {
+                    isDraggingA = true;
+                } else if (Math.hypot(pos.x - ptB.x, pos.y - ptB.y) < 20) {
+                    isDraggingB = true;
+                }
+            }
+
+            function handleMove(e) {
+                if (!isDraggingA && !isDraggingB) return;
+                
+                e.preventDefault(); // 阻止默认滚动行为
+                const pos = getEventPos(e);
+
+                if (isDraggingA) {
+                    // 计算新的 a 值 (限制范围 2~10)
+                    let newA = Math.round((pos.x - cx) / UNIT);
+                    newA = Math.max(2, Math.min(10, newA));
+                    if (newA !== a) {
+                        a = newA;
+                        sliderA.value = a;
+                        updateState();
+                    }
+                } else if (isDraggingB) {
+                    // 计算新的 b 值 (限制范围 2~10，注意y轴向上为减)
+                    let newB = Math.round((cy - pos.y) / UNIT);
+                    newB = Math.max(2, Math.min(10, newB));
+                    if (newB !== b) {
+                        b = newB;
+                        sliderB.value = b;
+                        updateState();
+                    }
+                }
+            }
+
+            function handleEnd() {
+                isDraggingA = false;
+                isDraggingB = false;
+            }
+
+            // 绑定鼠标事件
+            canvas.addEventListener('mousedown', handleStart);
+            canvas.addEventListener('mousemove', handleMove);
+            window.addEventListener('mouseup', handleEnd);
+
+            // 绑定触摸事件 (针对平板)
+            canvas.addEventListener('touchstart', handleStart, { passive: false });
+            canvas.addEventListener('touchmove', handleMove, { passive: false });
+            window.addEventListener('touchend', handleEnd);
+
+            // --- 初始启动 ---
+            updateState();
+        });
+    </script>
+</body>
+</html>

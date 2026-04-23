@@ -1,0 +1,202 @@
+## 代数专项指导
+
+你正在处理一道代数题目（方程、函数、不等式、解析几何等）。
+
+### 坐标系绘制（必须包含）
+
+任何涉及函数图像、圆锥曲线、解析几何的可视化，**必须包含完整的坐标系**：
+- X轴和Y轴（带箭头）
+- 网格线（半透明灰色）
+- 刻度标注（数字）
+- 原点O标记
+
+```javascript
+// 完整坐标系绘制示例
+function drawCoordinateSystem(ctx, originX, originY, width, height, scale) {
+    // 1. 绘制网格线
+    ctx.strokeStyle = '#E5E7EB';
+    ctx.lineWidth = 0.5;
+    for (let x = -10; x <= 10; x++) {
+        const px = originX + x * scale;
+        ctx.beginPath();
+        ctx.moveTo(px, 0);
+        ctx.lineTo(px, height);
+        ctx.stroke();
+    }
+    for (let y = -10; y <= 10; y++) {
+        const py = originY - y * scale;
+        ctx.beginPath();
+        ctx.moveTo(0, py);
+        ctx.lineTo(width, py);
+        ctx.stroke();
+    }
+    
+    // 2. 绘制坐标轴
+    ctx.strokeStyle = '#374151';
+    ctx.lineWidth = 2;
+    // X轴
+    ctx.beginPath();
+    ctx.moveTo(0, originY);
+    ctx.lineTo(width, originY);
+    ctx.stroke();
+    // Y轴
+    ctx.beginPath();
+    ctx.moveTo(originX, 0);
+    ctx.lineTo(originX, height);
+    ctx.stroke();
+    
+    // 3. 绘制箭头
+    ctx.fillStyle = '#374151';
+    // X轴箭头
+    ctx.beginPath();
+    ctx.moveTo(width - 10, originY - 5);
+    ctx.lineTo(width, originY);
+    ctx.lineTo(width - 10, originY + 5);
+    ctx.fill();
+    // Y轴箭头
+    ctx.beginPath();
+    ctx.moveTo(originX - 5, 10);
+    ctx.lineTo(originX, 0);
+    ctx.lineTo(originX + 5, 10);
+    ctx.fill();
+    
+    // 4. 绘制刻度标注
+    ctx.font = '12px sans-serif';
+    ctx.fillStyle = '#6B7280';
+    ctx.textAlign = 'center';
+    for (let x = -10; x <= 10; x += 2) {
+        if (x === 0) continue;
+        const px = originX + x * scale;
+        ctx.fillText(x.toString(), px, originY + 15);
+    }
+    ctx.textAlign = 'right';
+    for (let y = -10; y <= 10; y += 2) {
+        if (y === 0) continue;
+        const py = originY - y * scale;
+        ctx.fillText(y.toString(), originX - 8, py + 4);
+    }
+    ctx.fillText('O', originX - 8, originY + 15);
+}
+```
+
+2. **函数曲线绘制**
+```javascript
+function plotFunction(ctx, fn, xMin, xMax, scale, originX, originY) {
+    ctx.beginPath();
+    let started = false;
+    for (let px = 0; px < canvas.width; px++) {
+        const x = (px - originX) / scale;
+        if (x < xMin || x > xMax) continue;
+        const y = fn(x);
+        const py = originY - y * scale;
+        if (!started) { ctx.moveTo(px, py); started = true; }
+        else { ctx.lineTo(px, py); }
+    }
+    ctx.strokeStyle = '#4285F4';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+}
+```
+
+### 代数交互设计
+
+1. **参数可调的函数族**
+   - 二次函数 y = ax² + bx + c：滑块控制 a, b, c
+   - 三角函数 y = Asin(ωx + φ)：滑块控制振幅、周期、相位
+   - 指数/对数函数：底数可调
+
+2. **方程求解可视化**
+   - 图像法：两函数交点即为解
+   - 配方法：动画展示配方过程
+   - 因式分解：展示分解步骤
+
+3. **不等式区域**
+   - 用半透明填充表示解集区域
+   - 边界线用不同线型（实线/虚线）表示是否包含
+
+### 数学公式显示
+
+对于代数公式，推荐使用 MathJax：
+
+```html
+<script>
+    window.MathJax = {
+        tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+        svg: { fontCache: 'global' }
+    };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+```
+
+然后在HTML中使用：`$f(x) = x^2 + 2x + 1$`
+
+### 圆锥曲线绘制（抛物线、椭圆、双曲线）
+
+圆锥曲线必须包含：
+- **曲线本身**：用平滑的贝塞尔曲线或密集点连线
+- **焦点**：用红色圆点标记，并标注“F”
+- **顶点**：用绿色圆点标记，并标注“V”
+- **准线**：用紫色虚线绘制，并标注“准线”
+- **对称轴**：用灰色虚线表示
+
+```javascript
+// 抛物线绘制示例 (y² = 4px)
+function drawParabola(ctx, p, originX, originY, scale) {
+    ctx.strokeStyle = '#3B82F6';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    
+    // 上半部分
+    for (let x = 0; x <= 10; x += 0.1) {
+        const y = 2 * Math.sqrt(p * x);
+        const px = originX + x * scale;
+        const py = originY - y * scale;
+        if (x === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    
+    // 下半部分
+    ctx.beginPath();
+    for (let x = 0; x <= 10; x += 0.1) {
+        const y = -2 * Math.sqrt(p * x);
+        const px = originX + x * scale;
+        const py = originY - y * scale;
+        if (x === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    
+    // 绘制焦点 F(p, 0)
+    ctx.fillStyle = '#EF4444';
+    ctx.beginPath();
+    ctx.arc(originX + p * scale, originY, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.fillText('F', originX + p * scale + 12, originY - 8);
+    
+    // 绘制顶点 V(0, 0)
+    ctx.fillStyle = '#10B981';
+    ctx.beginPath();
+    ctx.arc(originX, originY, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillText('V', originX - 15, originY + 15);
+    
+    // 绘制准线 x = -p
+    ctx.strokeStyle = '#8B5CF6';
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(originX - p * scale, 0);
+    ctx.lineTo(originX - p * scale, canvas.height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+}
+```
+
+### 关键交互特性
+
+对于圆锥曲线类题目，必须支持：
+1. **参数调节**：滑块控制焦点距离p，实时更新曲线形状
+2. **可拖拽点**：焦点、顶点可拖动，观察参数变化
+3. **等距性演示**：显示曲线上任意点到焦点和准线的距离相等
+4. **方程显示**：实时显示当前的标准方程（如 y² = 4px）

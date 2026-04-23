@@ -1,0 +1,664 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>伽利略的理想实验 - 历史对比版</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        eduBlue: '#4285F4',
+                        eduGreen: '#34A853',
+                        eduYellow: '#FBBC05',
+                        eduRed: '#EA4335',
+                        eduBg: '#F5F7FB'
+                    },
+                    fontFamily: {
+                        sans: ['"Microsoft YaHei"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* 自定义大号触控滑块 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 12px;
+            cursor: pointer;
+            background: #E2E8F0;
+            border-radius: 999px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            height: 28px;
+            width: 28px;
+            border-radius: 50%;
+            background: #4285F4;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border: 3px solid #fff;
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        input[type=range]:disabled::-webkit-slider-thumb {
+            background: #94A3B8;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-eduBg text-gray-800 min-h-screen flex flex-col font-sans p-4 md:p-6 overflow-x-hidden">
+
+    <!-- 顶部标题 -->
+    <header class="max-w-6xl mx-auto w-full mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <div class="bg-eduBlue text-white w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-md">
+                <i class="fa-solid fa-atom"></i>
+            </div>
+            <div class="">
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800 tracking-tight">伽利略的理想实验</h1>
+                <p class="text-sm md:text-base text-gray-500 mt-1">探索惯性定律的伟大思维实验</p>
+            </div>
+        </div>
+        <div class="hidden md:flex gap-2">
+            <span class="px-3 py-1 bg-white rounded-full shadow-sm text-sm font-medium text-eduBlue"><i class="fa-solid fa-layer-group mr-1"></i> 多轨迹对比</span>
+            <span class="px-3 py-1 bg-white rounded-full shadow-sm text-sm font-medium text-eduGreen"><i class="fa-solid fa-rocket mr-1"></i> 惯性定律</span>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
+        
+        <!-- 左侧/上方 控制面板 -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- 实验介绍卡片 -->
+            <div class="bg-white rounded-2xl shadow-md p-5 flex flex-col">
+                <div class="flex gap-4 items-start">
+                    <img src="https://api.zcat.cn/udata/720211/png/3336da947c3c9acca009ab4f659179b7.png" alt="伽利略" class="w-20 h-20 rounded-full border-4 border-eduBg object-cover shadow-sm flex-shrink-0">
+                    <div class="">
+                        <h2 class="text-lg font-bold text-gray-800 mb-2">实验原理</h2>
+                        <p class="text-sm text-gray-600 leading-relaxed">
+                            当右侧斜面变缓时，小球会滚得**更远**以达到原高度。如果保存历史轨迹，您可以清晰地对比出：在没有摩擦力时，所有停靠点都在**同一水平高度**！
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制卡片 -->
+            <div class="bg-white rounded-2xl shadow-md p-6 flex flex-col flex-grow">
+                <h2 class="text-xl font-bold text-gray-800 border-b pb-3 mb-5"><i class="fa-solid fa-sliders text-eduBlue mr-2"></i> 实验控制台</h2>
+                
+                <!-- 角度调节 -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-end mb-3">
+                        <label class="font-bold text-gray-700 text-lg">右侧斜面角度</label>
+                        <span id="angleValueDisplay" class="text-2xl font-black text-eduBlue">45°</span>
+                    </div>
+                    <input type="range" id="angleSlider" min="0" max="60" value="45" step="5">
+                    <div class="flex justify-between text-xs text-gray-400 mt-2 font-bold px-1">
+                        <span class="">水平 (0°)</span>
+                        <span class="">陡峭 (60°)</span>
+                    </div>
+                </div>
+
+                <!-- 摩擦力大小调节 -->
+                <div class="mb-4 p-4 bg-eduBg rounded-xl">
+                    <div class="flex justify-between items-end mb-2">
+                        <label class="font-bold text-gray-700 text-lg">摩擦系数 (μ)</label>
+                        <span id="frictionValueDisplay" class="text-xl font-black text-eduRed">0.00</span>
+                    </div>
+                    <input type="range" id="frictionSlider" min="0" max="0.3" value="0" step="0.01">
+                </div>
+
+                <!-- 保留历史轨迹开关 (新增) -->
+                <div class="mb-8 flex items-center justify-between bg-eduBg p-4 rounded-xl border border-blue-100">
+                    <div class="">
+                        <p class="font-bold text-gray-700 text-lg">保留历史轨迹</p>
+                        <p class="text-sm font-medium text-gray-500 mt-1"><i class="fa-solid fa-layer-group"></i> 叠加对比不同实验</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="historyToggle" class="sr-only peer">
+                        <div class="w-14 h-8 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-eduBlue shadow-inner"></div>
+                    </label>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="mt-auto flex gap-4">
+                    <button id="resetBtn" class="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-bold text-lg hover:bg-gray-200 hover:text-gray-900 transition shadow-sm border border-gray-200 active:scale-95">
+                        <i class="fa-solid fa-trash-can mr-1"></i> 重置
+                    </button>
+                    <button id="playBtn" class="flex-[2] py-3 px-4 bg-eduBlue text-white rounded-xl font-bold text-lg hover:bg-blue-600 transition shadow-md shadow-blue-500/30 active:scale-95">
+                        <i class="fa-solid fa-play mr-1"></i> 释放小球
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧/下方 演示区 -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            <!-- 状态反馈条 -->
+            <div id="statusAlert" class="bg-white border-l-8 border-eduBlue rounded-r-2xl shadow-md p-4 flex items-center transition-all duration-300">
+                <div id="statusIcon" class="w-10 h-10 rounded-full bg-blue-100 text-eduBlue flex items-center justify-center text-xl mr-4 flex-shrink-0">
+                    <i class="fa-solid fa-info"></i>
+                </div>
+                <div class="">
+                    <h3 id="statusTitle" class="font-bold text-gray-800 text-lg">准备就绪</h3>
+                    <p id="statusDesc" class="text-gray-600">请尝试调节左侧的斜面角度，打开“保留历史轨迹”，然后点击“释放小球”。</p>
+                </div>
+            </div>
+
+            <!-- Canvas 画布容器 -->
+            <div class="bg-white rounded-2xl shadow-lg p-2 overflow-hidden flex-grow relative min-h-[400px]" style="position: relative; transform: translate(-1px, -12px);">
+                <div class="absolute top-4 left-6 px-3 py-1 bg-eduBg rounded-lg text-sm font-bold text-gray-500 opacity-70">
+                    <i class="fa-solid fa-video"></i> 实验模拟区
+                </div>
+                <canvas id="simCanvas" class="w-full h-full block rounded-xl bg-slate-50"></canvas>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        /**
+         * 物理引擎与渲染逻辑
+         */
+        class PhysicsSimulation {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.W = 1200;
+                this.H = 600;
+                
+                // 物理参数
+                this.g = 800;             
+                this.mu = 0.18;           
+                this.ballRadius = 24;     
+                this.initialHeight = 150; 
+                this.baseY = 500;         
+                
+                // 轨道关键点
+                this.startX = 100;
+                this.flatLeftX = 400;
+                this.flatRightX = 550;
+                
+                // 状态变量
+                this.angle2 = 45;         
+                this.frictionCoeff = 0;   
+                this.isPlaying = false;   
+                this.isFinished = false;  
+                
+                this.s = 0;               
+                this.v = 0;               
+                this.lastTime = 0;
+                this.reqId = null;
+
+                // 历史记录相关
+                this.keepHistory = false;
+                this.history = []; // 存放 { angle2, isFriction, final_s }
+
+                this.loop = this.loop.bind(this);
+                
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+            }
+
+            resize() {
+                const rect = this.canvas.parentElement.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                if (!this.isPlaying) this.draw();
+            }
+
+            // 根据传入角度获取轨道几何数据
+            getGeometry(angle2) {
+                const L1_x = this.flatLeftX - this.startX;
+                const L1_y = this.baseY - this.initialHeight;
+                const L1 = Math.sqrt(L1_x*L1_x + L1_y*L1_y);
+                const theta1 = Math.atan2(L1_y, L1_x);
+
+                const L2 = this.flatRightX - this.flatLeftX;
+                const theta2 = (angle2 * Math.PI) / 180;
+                
+                let L3 = 0;
+                if (angle2 > 0) {
+                    L3 = (this.baseY - 50) / Math.sin(theta2); 
+                } else {
+                    L3 = this.W; 
+                }
+
+                return { L1, L2, L3, theta1, theta2 };
+            }
+
+            start() {
+                if (this.isPlaying) return;
+                this.resetBall();
+                this.isPlaying = true;
+                this.isFinished = false;
+                this.lastTime = performance.now();
+                this.reqId = requestAnimationFrame(this.loop);
+            }
+
+            // 支持传入是否清空历史的重置
+            reset(clearHistory = false) {
+                this.isPlaying = false;
+                this.isFinished = false;
+                if (this.reqId) cancelAnimationFrame(this.reqId);
+                if (clearHistory) {
+                    this.history = [];
+                }
+                this.resetBall();
+                this.draw();
+            }
+
+            resetBall() {
+                this.s = 0;
+                this.v = 0;
+            }
+
+            loop(time) {
+                if (!this.isPlaying) return;
+                
+                let dt = (time - this.lastTime) / 1000;
+                if (dt > 0.05) dt = 0.05; 
+                this.lastTime = time;
+
+                const wasFinished = this.isFinished;
+                
+                this.updatePhysics(dt);
+                this.draw();
+
+                if (!this.isFinished) {
+                    this.reqId = requestAnimationFrame(this.loop);
+                } else {
+                    // 仅在刚结束的那一帧触发完成逻辑
+                    if (!wasFinished) {
+                        this.isPlaying = false;
+                        
+                        // 保存历史记录逻辑
+                        if (this.keepHistory) {
+                            this.history.push({
+                                angle2: this.angle2,
+                                mu: this.frictionCoeff,
+                                final_s: this.s
+                            });
+                            if (this.history.length > 5) this.history.shift();
+                        }
+                        
+                        if(this.onComplete) this.onComplete(this.s, this.angle2, this.isFriction);
+                    }
+                }
+            }
+
+            updatePhysics(dt) {
+                const geo = this.getGeometry(this.angle2);
+                const mu = this.frictionCoeff;
+                let a = 0;
+
+                if (this.s <= geo.L1) {
+                    a = this.g * Math.sin(geo.theta1) - mu * this.g * Math.cos(geo.theta1) * Math.sign(this.v >= 0 ? 1 : -1);
+                } 
+                else if (this.s > geo.L1 && this.s <= geo.L1 + geo.L2) {
+                    a = -mu * this.g * Math.sign(this.v > 0 ? 1 : (this.v < 0 ? -1 : 0));
+                } 
+                else {
+                    a = -this.g * Math.sin(geo.theta2) - mu * this.g * Math.cos(geo.theta2) * Math.sign(this.v > 0 ? 1 : -1);
+                    if (this.angle2 === 0 && !this.isFriction) {
+                        a = 0;
+                    }
+                }
+
+                this.v += a * dt;
+                this.s += this.v * dt;
+
+                if (this.s < 0) {
+                    this.s = 0;
+                    this.v = 0;
+                    this.isFinished = true;
+                }
+                
+                if (this.s > geo.L1 && this.v <= 0 && a <= 0) {
+                     this.v = 0;
+                     this.isFinished = true;
+                }
+
+                if (this.angle2 === 0 && this.s > geo.L1 + geo.L2 + 800) {
+                    this.isFinished = true;
+                }
+            }
+
+            // 计算小球在特定路程和斜面角度下的坐标
+            getBallPos(s, angle2) {
+                const geo = this.getGeometry(angle2);
+                let x, y, angle;
+                const R = this.ballRadius;
+
+                if (s <= geo.L1) {
+                    const ratio = s / geo.L1;
+                    const contactX = this.startX + ratio * (this.flatLeftX - this.startX);
+                    const contactY = this.initialHeight + ratio * (this.baseY - this.initialHeight);
+                    x = contactX - R * Math.sin(geo.theta1);
+                    y = contactY - R * Math.cos(geo.theta1);
+                } 
+                else if (s <= geo.L1 + geo.L2) {
+                    const s2 = s - geo.L1;
+                    const contactX = this.flatLeftX + s2;
+                    const contactY = this.baseY;
+                    x = contactX;
+                    y = contactY - R;
+                } 
+                else {
+                    const s3 = s - geo.L1 - geo.L2;
+                    const contactX = this.flatRightX + s3 * Math.cos(geo.theta2);
+                    const contactY = this.baseY - s3 * Math.sin(geo.theta2);
+                    x = contactX - R * Math.sin(geo.theta2);
+                    y = contactY - R * Math.cos(geo.theta2);
+                }
+
+                angle = s / R;
+                return { x, y, angle };
+            }
+
+            draw() {
+                const ctx = this.ctx;
+                const cw = this.canvas.width;
+                const ch = this.canvas.height;
+                ctx.clearRect(0, 0, cw, ch);
+
+                const scale = Math.min(cw / this.W, ch / this.H);
+                const offsetX = (cw - this.W * scale) / 2;
+                const offsetY = (ch - this.H * scale) / 2 + 30;
+
+                ctx.save();
+                ctx.translate(offsetX, offsetY);
+                ctx.scale(scale, scale);
+
+                // --- 绘制网格辅助线 ---
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = '#E2E8F0';
+                for(let i=0; i<this.W; i+=50) {
+                    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, this.H); ctx.stroke();
+                }
+                for(let i=0; i<this.H; i+=50) {
+                    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(this.W, i); ctx.stroke();
+                }
+
+                // --- 绘制原高度参考线 ---
+                ctx.beginPath();
+                ctx.moveTo(this.startX - 50, this.initialHeight);
+                ctx.lineTo(this.W - 50, this.initialHeight);
+                ctx.strokeStyle = '#94A3B8';
+                ctx.setLineDash([10, 10]);
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                ctx.fillStyle = '#64748B';
+                ctx.font = 'bold 18px "Microsoft YaHei"';
+                ctx.fillText('初始释放高度', this.startX - 60, this.initialHeight - 10);
+
+                // --- 绘制所有轨道的底部与表层 ---
+                const geo = this.getGeometry(this.angle2);
+
+                // 1. 绘制历史轨道 (右侧变轨部分)
+                this.history.forEach(h => {
+                    const hGeo = this.getGeometry(h.angle2);
+                    const rightEndX = this.flatRightX + hGeo.L3 * Math.cos(hGeo.theta2);
+                    const rightEndY = this.baseY - hGeo.L3 * Math.sin(hGeo.theta2);
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(this.flatLeftX, this.baseY);
+                    ctx.lineTo(this.flatRightX, this.baseY);
+                    ctx.lineTo(rightEndX, rightEndY);
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    // 历史底座较浅
+                    ctx.strokeStyle = 'rgba(203, 213, 225, 0.5)'; 
+                    ctx.lineWidth = 18;
+                    ctx.stroke();
+                    // 历史表层根据摩擦系数变色
+                    ctx.strokeStyle = h.mu > 0 ? 'rgba(252, 165, 165, 0.5)' : 'rgba(134, 239, 172, 0.5)'; 
+                    ctx.lineWidth = 10;
+                    ctx.stroke();
+                });
+
+                // 2. 绘制当前完整的轨道
+                const rightEndX = this.flatRightX + geo.L3 * Math.cos(geo.theta2);
+                const rightEndY = this.baseY - geo.L3 * Math.sin(geo.theta2);
+
+                ctx.beginPath();
+                ctx.moveTo(this.startX - 50, this.initialHeight - 50 * Math.tan(geo.theta1));
+                ctx.lineTo(this.startX, this.initialHeight);
+                ctx.lineTo(this.flatLeftX, this.baseY);
+                ctx.lineTo(this.flatRightX, this.baseY);
+                ctx.lineTo(rightEndX, rightEndY);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.strokeStyle = '#CBD5E1'; // 正常底座
+                ctx.lineWidth = 18;
+                ctx.stroke();
+                ctx.strokeStyle = this.isFriction ? '#FCA5A5' : '#86EFAC'; // 正常表层
+                ctx.lineWidth = 10;
+                ctx.stroke();
+
+                // 摩擦力图案提示
+                if(this.isFriction) {
+                    ctx.fillStyle = 'rgba(234, 67, 53, 0.7)';
+                    ctx.font = 'bold 20px "Microsoft YaHei"';
+                    ctx.fillText('🚧 当前：粗糙表面 (存在阻力)', this.flatLeftX + 20, this.baseY + 40);
+                } else {
+                    ctx.fillStyle = 'rgba(52, 168, 83, 0.8)';
+                    ctx.font = 'bold 20px "Microsoft YaHei"';
+                    ctx.fillText('✨ 当前：光滑表面 (理想无摩擦)', this.flatLeftX + 20, this.baseY + 40);
+                }
+
+                // --- 绘制所有历史小球虚影 ---
+                this.history.forEach(h => {
+                    // 如果跑到屏幕外（水平状态跑远了），就不画了
+                    if (h.angle2 === 0 && !h.isFriction && h.final_s > geo.L1 + geo.L2 + 500) return;
+
+                    const ball = this.getBallPos(h.final_s, h.angle2);
+                    ctx.save();
+                    ctx.translate(ball.x, ball.y);
+                    ctx.rotate(ball.angle);
+                    
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.ballRadius, 0, Math.PI * 2);
+                    // 有摩擦红影，无摩擦灰影
+                    ctx.fillStyle = h.isFriction ? 'rgba(248, 113, 113, 0.6)' : 'rgba(156, 163, 175, 0.6)'; 
+                    ctx.fill();
+                    
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -this.ballRadius); ctx.lineTo(0, this.ballRadius);
+                    ctx.moveTo(-this.ballRadius, 0); ctx.lineTo(this.ballRadius, 0);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.ballRadius - 4, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                });
+
+                // --- 绘制当前运动的小球 ---
+                const currBall = this.getBallPos(this.s, this.angle2);
+                ctx.translate(currBall.x, currBall.y);
+                ctx.rotate(currBall.angle);
+
+                const radGrad = ctx.createRadialGradient(-this.ballRadius/3, -this.ballRadius/3, 2, 0, 0, this.ballRadius);
+                radGrad.addColorStop(0, '#A7C7FF');
+                radGrad.addColorStop(1, '#4285F4');
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, this.ballRadius, 0, Math.PI * 2);
+                ctx.fillStyle = radGrad;
+                ctx.fill();
+                
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#fff';
+                ctx.beginPath();
+                ctx.moveTo(0, -this.ballRadius); ctx.lineTo(0, this.ballRadius);
+                ctx.moveTo(-this.ballRadius, 0); ctx.lineTo(this.ballRadius, 0);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, 0, this.ballRadius - 4, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        /**
+         * 页面逻辑与 UI 交互控制
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            const sim = new PhysicsSimulation('simCanvas');
+
+            // DOM 元素
+            const angleSlider = document.getElementById('angleSlider');
+            const angleValueDisplay = document.getElementById('angleValueDisplay');
+            const frictionSlider = document.getElementById('frictionSlider');
+            const frictionValueDisplay = document.getElementById('frictionValueDisplay');
+            const historyToggle = document.getElementById('historyToggle');
+            const playBtn = document.getElementById('playBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            
+            // 状态面板元素
+            const statusAlert = document.getElementById('statusAlert');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusDesc = document.getElementById('statusDesc');
+
+            function updateStatus(type, title, desc) {
+                statusAlert.classList.remove('border-eduBlue', 'border-eduGreen', 'border-eduYellow', 'border-eduRed');
+                statusIcon.classList.remove('bg-blue-100', 'text-eduBlue', 'bg-green-100', 'text-eduGreen', 'bg-yellow-100', 'text-eduYellow', 'bg-red-100', 'text-eduRed');
+                
+                statusTitle.innerText = title;
+                statusDesc.innerHTML = desc;
+
+                if(type === 'ready' || type === 'play') {
+                    statusAlert.classList.add('border-eduBlue');
+                    statusIcon.classList.add('bg-blue-100', 'text-eduBlue');
+                    statusIcon.innerHTML = type === 'ready' ? '<i class="fa-solid fa-info"></i>' : '<i class="fa-solid fa-person-running"></i>';
+                } 
+                else if (type === 'success') {
+                    statusAlert.classList.add('border-eduGreen');
+                    statusIcon.classList.add('bg-green-100', 'text-eduGreen');
+                    statusIcon.innerHTML = '<i class="fa-solid fa-check"></i>';
+                }
+                else if (type === 'warn') {
+                    statusAlert.classList.add('border-eduYellow');
+                    statusIcon.classList.add('bg-yellow-100', 'text-eduYellow');
+                    statusIcon.innerHTML = '<i class="fa-solid fa-lightbulb"></i>';
+                }
+                else if (type === 'fail') {
+                    statusAlert.classList.add('border-eduRed');
+                    statusIcon.classList.add('bg-red-100', 'text-eduRed');
+                    statusIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                }
+            }
+
+            sim.draw();
+
+            // 滑块交互
+            angleSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                angleValueDisplay.innerText = val + '°';
+                sim.angle2 = val;
+                if (!sim.isPlaying) sim.draw();
+                
+                if (sim.isFinished || sim.isPlaying) {
+                    sim.reset(false); // 不清空历史
+                    updateStatus('ready', '参数已修改', '点击“释放小球”观察在当前角度下的运动轨迹。');
+                }
+            });
+
+            // 摩擦力调节滑块
+            frictionSlider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                frictionValueDisplay.innerText = val.toFixed(2);
+                sim.frictionCoeff = val;
+                if (!sim.isPlaying) sim.draw();
+                
+                if (sim.isFinished || sim.isPlaying) {
+                    sim.reset(false);
+                    updateStatus('ready', '摩擦力已更新', '表面粗糙度已改变，请点击“释放小球”。');
+                }
+            });
+
+            // 保留历史开关
+            historyToggle.addEventListener('change', (e) => {
+                sim.keepHistory = e.target.checked;
+                if (!sim.keepHistory) {
+                    sim.history = []; // 关闭时立刻清空历史
+                    if (!sim.isPlaying) sim.draw();
+                }
+            });
+
+            // 播放按钮
+            playBtn.addEventListener('click', () => {
+                if(sim.isPlaying) return;
+                
+                angleSlider.disabled = true;
+                frictionSlider.disabled = true;
+                playBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                
+                updateStatus('play', '实验进行中...', '观察小球运动轨迹与能达到的高度。');
+                sim.start();
+            });
+
+            // 重置按钮 (彻底清空一切)
+            resetBtn.addEventListener('click', () => {
+                sim.reset(true); // 彻底清空历史
+                angleSlider.disabled = false;
+                frictionSlider.disabled = false;
+                playBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                updateStatus('ready', '实验已重置', '所有的状态和屏幕上的历史记录均已清空。');
+            });
+
+            // 动画结束回调
+            sim.onComplete = (final_s, final_angle, hasFriction) => {
+                angleSlider.disabled = false;
+                frictionSlider.disabled = false;
+                playBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+                let extraText = sim.keepHistory ? '<br><span class="text-sm text-eduBlue">💡 提示：您可以调节滑块改变角度，再次释放以对比轨道高度！</span>' : '';
+
+                if (hasFriction) {
+                    updateStatus('fail', '摩擦力阻碍', '由于摩擦力的消耗，小球<b>无法达到</b>原来的高度就停下了。' + extraText);
+                } else {
+                    if (final_angle === 45 || final_angle > 30) {
+                        updateStatus('success', '到达等高点', '无摩擦的理想情况下，无论斜面多陡，小球恰好回到了<b>与释放点相同的高度</b>。' + extraText);
+                    } 
+                    else if (final_angle > 0 && final_angle <= 30) {
+                        updateStatus('warn', '距离变长了', '右侧斜面变缓，小球为了达到原来的高度，在右侧滚动的<b>距离变长</b>了！' + extraText);
+                    } 
+                    else if (final_angle === 0) {
+                        updateStatus('success', '永远运动下去！', '<b>这是惯性定律的雏形！</b><br>右侧变成了水平面，小球永远无法达到原高度，因此将以恒定速度<b>永远沿直线运动下去</b>。');
+                    }
+                }
+            };
+        });
+    </script>
+
+</body></html>

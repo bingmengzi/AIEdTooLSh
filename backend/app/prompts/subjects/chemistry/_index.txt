@@ -1,0 +1,102 @@
+## 化学学科专项指导
+
+你正在处理一道化学题目或概念。化学可视化需要展示微观粒子结构和化学反应过程。
+
+### 化学可视化原则
+
+1. **分子/原子结构**
+   - 使用球棍模型表示分子结构
+   - 不同元素用不同颜色区分（如H白色、O红色、C黑色、N蓝色）
+   - 化学键用线段或圆柱体表示
+
+2. **化学反应过程**
+   - 动画展示反应物→产物的变化
+   - 显示化学方程式配平
+   - 能量变化用图表或颜色表示（放热红色渐变，吸热蓝色渐变）
+
+3. **周期表相关**
+   - 高亮特定元素
+   - 展示元素周期律
+   - 电子排布可视化
+
+### 化学交互设计要点
+
+1. **反应条件控制**：温度、压强、催化剂等因素
+2. **浓度调节**：滑块控制反应物浓度
+3. **3D分子旋转**：用Three.js展示分子立体结构
+4. **配平练习**：交互式化学方程式配平
+
+### 分子模型绘制（2D简化版）
+
+```javascript
+// 原子绘制
+function drawAtom(ctx, x, y, radius, color, symbol) {
+    // 绘制原子球
+    const gradient = ctx.createRadialGradient(x-radius/3, y-radius/3, 0, x, y, radius);
+    gradient.addColorStop(0, '#ffffff');
+    gradient.addColorStop(0.3, color);
+    gradient.addColorStop(1, darken(color, 30));
+    
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    
+    // 元素符号
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${radius}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(symbol, x, y);
+}
+
+// 化学键绘制
+function drawBond(ctx, x1, y1, x2, y2, bondType = 1) {
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 4;
+    
+    if (bondType === 1) {
+        // 单键
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    } else if (bondType === 2) {
+        // 双键：画两条平行线
+        const angle = Math.atan2(y2-y1, x2-x1);
+        const offset = 4;
+        // ... 绘制双键
+    }
+}
+```
+
+### 元素颜色约定（CPK配色）
+
+```javascript
+const ELEMENT_COLORS = {
+    'H': '#FFFFFF',  // 氢 - 白色
+    'C': '#909090',  // 碳 - 灰色
+    'N': '#3050F8',  // 氮 - 蓝色
+    'O': '#FF0D0D',  // 氧 - 红色
+    'S': '#FFFF30',  // 硫 - 黄色
+    'Cl': '#1FF01F', // 氯 - 绿色
+    'Na': '#AB5CF2', // 钠 - 紫色
+    'Fe': '#E06633'  // 铁 - 橙色
+};
+```
+
+### 交互设计建议
+
+1. **反应演示**
+   - 播放/暂停反应动画
+   - 步骤分解（反应物→过渡态→产物）
+   
+2. **实验模拟**
+   - 试管、烧杯等容器图形
+   - 颜色变化动画（如酸碱指示剂）
+   - 气泡/沉淀效果
+
+3. **数据显示**
+   - 反应进度条
+   - 浓度/温度实时数值
+   - 化学方程式显示

@@ -1,0 +1,284 @@
+# 数学代数场景专用代码参考（解析几何/函数图像/坐标系）
+
+以下是针对**解析几何**场景（抛物线、椭圆、双曲线等）的完整代码实现。生成新的解析几何场景时，必须参考此代码。
+
+---
+
+## 1. 抛物线绘制（两种方向）
+
+```javascript
+function drawParabolaCurve(coords) {
+    ctx.save();
+    ctx.strokeStyle = COLORS.primary;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+
+    const range = 10;
+    let started = false;
+
+    if (state.orientation === 'right') {
+        // y² = 4px => x = y²/(4p)，遍历 y
+        for (let y = -range * 1.5; y <= range * 1.5; y += 0.1) {
+            const x = (y * y) / (4 * state.p);
+            const pos = toScreen(x, y, coords);
+            if (!started) { ctx.moveTo(pos.x, pos.y); started = true; }
+            else { ctx.lineTo(pos.x, pos.y); }
+        }
+    } else {
+        // x² = 4py => y = x²/(4p)，遍历 x
+        for (let x = -range * 1.5; x <= range * 1.5; x += 0.1) {
+            const y = (x * x) / (4 * state.p);
+            const pos = toScreen(x, y, coords);
+            if (!started) { ctx.moveTo(pos.x, pos.y); started = true; }
+            else { ctx.lineTo(pos.x, pos.y); }
+        }
+    }
+    ctx.stroke();
+    ctx.restore();
+}
+
+// 焦点位置计算
+function getFocusLogic() {
+    if (state.orientation === 'right') return { x: state.p, y: 0 };
+    return { x: 0, y: state.p };
+}
+
+// 准线位置计算
+function getDirectrixLogic() {
+    return -state.p;  // x = -p 或 y = -p
+}
+```
+
+---
+
+## 2. 焦点光晕效果（完整实现）
+
+```javascript
+function drawFocus(coords) {
+    const f = getFocusLogic();
+    const pos = toScreen(f.x, f.y, coords);
+    
+    // 1. 光晕效果（必须使用 RadialGradient）
+    const gradient = ctx.createRadialGradient(pos.x, pos.y, 2, pos.x, pos.y, 15);
+    gradient.addColorStop(0, 'rgba(234, 67, 53, 0.4)');
+    gradient.addColorStop(1, 'rgba(234, 67, 53, 0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. 实心点
+    ctx.fillStyle = COLORS.accent;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 3. 标签
+    ctx.fillStyle = COLORS.accent;
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText('F (焦点)', pos.x + 10, pos.y - 10);
+}
+```
+
+---
+
+## 3. 准线虚线绘制（支持两个方向）
+
+```javascript
+function drawDirectrix(coords) {
+    ctx.save();
+    ctx.strokeStyle = COLORS.secondary;
+    ctx.setLineDash([8, 8]);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    const dVal = getDirectrixLogic();
+    
+    if (state.orientation === 'right') {
+        // 垂直准线 x = -p
+        const pos = toScreen(dVal, 0, coords).x;
+        ctx.moveTo(pos, 0);
+        ctx.lineTo(pos, coords.height);
+        ctx.stroke();
+        // 标签
+        ctx.fillStyle = COLORS.secondary;
+        ctx.setLineDash([]);
+        ctx.fillText(`x = ${dVal.toFixed(1)}`, pos + 5, 20);
+    } else {
+        // 水平准线 y = -p
+        const pos = toScreen(0, dVal, coords).y;
+        ctx.moveTo(0, pos);
+        ctx.lineTo(coords.width, pos);
+        ctx.stroke();
+        ctx.fillStyle = COLORS.secondary;
+        ctx.setLineDash([]);
+        ctx.fillText(`y = ${dVal.toFixed(1)}`, coords.width - 60, pos - 5);
+    }
+    ctx.restore();
+}
+```
+
+---
+
+## 4. 动画点等距性演示（PF = PL）
+
+```javascript
+function drawAnimatedPoint(coords) {
+    const t = state.animPointT;
+    let px, py, dx, dy;
+
+    if (state.orientation === 'right') {
+        // 参数方程：x = pt², y = 2pt
+        px = state.p * t * t;
+        py = 2 * state.p * t;
+        // 准线垂足 (在 x = -p 上)
+        dx = -state.p;
+        dy = py;
+    } else {
+        // 参数方程：x = 2pt, y = pt²
+        px = 2 * state.p * t;
+        py = state.p * t * t;
+        // 准线垂足 (在 y = -p 上)
+        dx = px;
+        dy = -state.p;
+    }
+
+    const pPos = toScreen(px, py, coords);
+    const dPos = toScreen(dx, dy, coords);
+    const f = getFocusLogic();
+    const fPos = toScreen(f.x, f.y, coords);
+
+    // 1. 连线 PF（红色虚线）
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = COLORS.accent;
+    ctx.beginPath();
+    ctx.moveTo(pPos.x, pPos.y);
+    ctx.lineTo(fPos.x, fPos.y);
+    ctx.stroke();
+
+    // 2. 连线 PL（绿色虚线）
+    ctx.strokeStyle = COLORS.success;
+    ctx.beginPath();
+    ctx.moveTo(pPos.x, pPos.y);
+    ctx.lineTo(dPos.x, dPos.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // 3. 动画点（黄色 + 白边）
+    ctx.fillStyle = COLORS.warning;
+    ctx.beginPath();
+    ctx.arc(pPos.x, pPos.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 4. 距离标签
+    ctx.fillStyle = COLORS.primary;
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('|PF|', (pPos.x + fPos.x) / 2 - 10, (pPos.y + fPos.y) / 2 - 5);
+    ctx.fillText('|PL|', (pPos.x + dPos.x) / 2 + 10, (pPos.y + dPos.y) / 2 + 5);
+}
+```
+
+---
+
+## 5. 方向切换功能
+
+```javascript
+function setOrientation(dir) {
+    state.orientation = dir;
+    
+    // 更新按钮样式
+    if (dir === 'right') {
+        btnModeRight.classList.add('active-control', 'text-blue-700', 'bg-blue-50');
+        btnModeRight.classList.remove('text-gray-600', 'bg-white');
+        btnModeUp.classList.remove('active-control', 'text-blue-700', 'bg-blue-50');
+        btnModeUp.classList.add('text-gray-600', 'bg-white');
+    } else {
+        btnModeUp.classList.add('active-control', 'text-blue-700', 'bg-blue-50');
+        btnModeUp.classList.remove('text-gray-600', 'bg-white');
+        btnModeRight.classList.remove('active-control', 'text-blue-700', 'bg-blue-50');
+        btnModeRight.classList.add('text-gray-600', 'bg-white');
+    }
+    
+    updateUI();
+    draw();
+}
+```
+
+---
+
+## 6. 方程实时更新
+
+```javascript
+function updateUI() {
+    const displayP = state.p.toFixed(1);
+    pValueDisplay.textContent = displayP;
+    
+    const coef = (4 * state.p).toFixed(1);
+    
+    if (state.orientation === 'right') {
+        equationDisplay.textContent = `y² = ${coef}x`;
+        focusCoordDisplay.textContent = `(${displayP}, 0)`;
+        directrixCoordDisplay.textContent = `x = ${(-state.p).toFixed(1)}`;
+    } else {
+        equationDisplay.textContent = `x² = ${coef}y`;
+        focusCoordDisplay.textContent = `(0, ${displayP})`;
+        directrixCoordDisplay.textContent = `y = ${(-state.p).toFixed(1)}`;
+    }
+}
+```
+
+---
+
+## 7. HTML 方程显示区域
+
+```html
+<div class="bg-gray-50 rounded-lg p-4 border border-gray-100">
+    <h3 class="text-xs font-bold text-gray-500 uppercase mb-3">实时方程</h3>
+    <div class="font-mono text-lg text-center text-gray-800 bg-white py-2 rounded shadow-sm border" id="equationDisplay">
+        y² = 8x
+    </div>
+    <div class="mt-3 flex justify-between text-xs text-gray-500">
+        <span>焦点 F:</span>
+        <span class="font-mono text-red-500" id="focusCoord">(2, 0)</span>
+    </div>
+    <div class="flex justify-between text-xs text-gray-500 mt-1">
+        <span>准线:</span>
+        <span class="font-mono text-gray-600" id="directrixCoord">x = -2</span>
+    </div>
+</div>
+```
+
+---
+
+## 8. 方向切换按钮
+
+```html
+<div class="grid grid-cols-2 gap-2 mt-2">
+    <button id="btnModeRight" class="py-2 px-3 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 font-medium text-sm active-control" onclick="setOrientation('right')">
+        <i class="fa-solid fa-arrow-right mr-1"></i> 向右开口
+    </button>
+    <button id="btnModeUp" class="py-2 px-3 rounded-lg border border-gray-200 bg-white text-gray-600 font-medium text-sm" onclick="setOrientation('up')">
+        <i class="fa-solid fa-arrow-up mr-1"></i> 向上开口
+    </button>
+</div>
+```
+
+---
+
+## 关键公式速查
+
+| 曲线类型 | 标准方程 | 焦点 | 准线 | 参数方程 |
+|---------|---------|------|------|---------|
+| 抛物线(右) | y²=4px | (p,0) | x=-p | x=pt², y=2pt |
+| 抛物线(上) | x²=4py | (0,p) | y=-p | x=2pt, y=pt² |
+| 椭圆 | x²/a²+y²/b²=1 | (±c,0) | x=±a²/c | x=acosθ, y=bsinθ |
+| 双曲线 | x²/a²-y²/b²=1 | (±c,0) | x=±a²/c | x=a/cosθ, y=btanθ |

@@ -1,0 +1,456 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>物理互动课堂：平衡木与压敏电阻动态分析</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        eduBlue: '#4285F4',
+                        eduRed: '#EA4335',
+                        eduYellow: '#FBBC05',
+                        eduGreen: '#34A853',
+                        bgLight: '#F5F7FB'
+                    },
+                    fontFamily: {
+                        sans: ['"Microsoft YaHei"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #F5F7FB; overflow-x: hidden; touch-action: none; }
+        .card-shadow { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        
+        .lever-track { 
+            position: relative; width: 100%; height: 16px; 
+            background: linear-gradient(to bottom, #94a3b8, #64748b); 
+            border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 20;
+        }
+        
+        .kid-container {
+            position: absolute; top: -5px; transform: translate(-50%, -100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: grab; z-index: 50; width: 60px;
+        }
+        .kid-container:active { cursor: grabbing; transform: translate(-50%, -100%) scale(1.05); }
+        .kid-avatar {
+            width: 56px; height: 56px; 
+            background-image: url('https://api.zcat.cn/udata/722630/png/b0729b50627d38fd26dd56e4a713f554.png');
+            background-size: cover; background-position: center; border-radius: 50%;
+            border: 3px solid #4285F4; box-shadow: 0 4px 6px rgba(0,0,0,0.2); margin: 0 auto;
+        }
+        .kid-pointer {
+            width: 0; height: 0; 
+            border-left: 8px solid transparent; border-right: 8px solid transparent;
+            border-top: 12px solid #4285F4; margin: -2px auto 0 auto;
+        }
+
+        .cd-pole {
+            position: absolute; top: 16px; width: 14px; height: 120px;
+            background: linear-gradient(to right, #cbd5e1, #94a3b8);
+            transform: translateX(-50%); border-radius: 0 0 4px 4px;
+            z-index: 10; box-shadow: inset 0 0 4px rgba(0,0,0,0.2);
+        }
+        
+        .marker { position: absolute; font-weight: 900; color: #1e293b; font-size: 16px; transform: translateX(-50%); z-index: 30;}
+        .force-arrow {
+            position: absolute; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center;
+            font-size: 12px; font-weight: bold; white-space: nowrap; transition: all 0.2s;
+        }
+
+        .gauge-card { transition: all 0.3s ease; border-bottom: 2px solid transparent;}
+        .gauge-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        
+        .answer-content { max-height: 0; overflow: hidden; transition: max-height 0.4s ease-out; }
+        .answer-content.open { max-height: 800px; }
+        
+        .glow-text { text-shadow: 0 0 10px rgba(66, 133, 244, 0.5); }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen p-4 md:p-8">
+
+    <header class="max-w-7xl mx-auto flex items-center justify-between bg-white p-6 rounded-2xl card-shadow mb-6 border-l-8 border-eduBlue">
+        <div class="">
+            <h1 class="text-2xl md:text-3xl font-bold text-slate-800 mb-2">平衡木与压敏电阻动态分析</h1>
+            <p class="text-slate-500 font-medium"><i class="fa-solid fa-lightbulb text-eduYellow mr-2"></i>滑动探索：力矩变化 ➔ 压力变化 ➔ 电阻变化 ➔ 电功率变化！</p>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左侧：占据8列 (交互区 + 仪表盘 + 问答解析) -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- 杠杆实验区 -->
+            <div class="bg-white p-6 md:p-8 rounded-2xl card-shadow flex flex-col items-center justify-center relative overflow-hidden">
+                <div class="absolute top-4 left-6 text-lg font-bold text-eduBlue bg-blue-50 px-4 py-1 rounded-full">
+                    <i class="fa-solid fa-hand-pointer mr-2"></i>拖动小人进行实验
+                </div>
+                
+                <div class="w-full mt-24 mb-32 px-4 md:px-12 relative" id="lever-container">
+                    <div class="w-full flex justify-between text-xs font-bold text-slate-400 mb-2 px-[10px]">
+                        <span class="">0m(B点)</span><span class="">1m(C点)</span><span class="">2m</span><span class="">3m</span><span class="">4m(O点)</span><span class="">5m(A点)</span>
+                    </div>
+                    
+                    <div class="lever-track" id="lever-track">
+                        <!-- 支点 O -->
+                        <div class="absolute top-[16px] transform -translate-x-1/2 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-b-[20px] border-b-eduBlue" style="left: 80%;"></div>
+                        <div class="marker text-eduBlue" style="left: 80%; top: -25px;">O</div>
+                        
+                        <!-- 端点与C点 -->
+                        <div class="marker" style="left: 0%; top: -25px;">B</div>
+                        <div class="marker" style="left: 100%; top: -25px;">A</div>
+                        <div class="marker" style="left: 20%; top: -25px;">C</div>
+                        
+                        <!-- CD杆与电阻 -->
+                        <div class="cd-pole" style="left: 20%;">
+                            <div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 w-10 h-3 bg-eduRed rounded-sm z-20"></div>
+                            <div class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 font-bold text-eduRed text-xs whitespace-nowrap">压敏电阻R</div>
+                        </div>
+
+                        <!-- 动态受力分析箭头 -->
+                        <div id="force-c-display" class="force-arrow text-eduRed" style="left: 20%; top: -65px;">
+                            <span id="force-c-text" class="mb-1">向上托力 0N</span>
+                            <i id="force-c-icon" class="fa-solid fa-arrow-up text-xl"></i>
+                        </div>
+                        <div id="force-d-display" class="force-arrow text-eduYellow" style="left: 20%; top: 155px;">
+                            <i class="fa-solid fa-arrow-down text-xl"></i>
+                            <span id="force-d-text" class="mt-1">向下压力 200N</span>
+                        </div>
+                        
+                        <!-- 小人 -->
+                        <div class="kid-container" id="kid" style="left: 80%;">
+                            <div class="kid-avatar"></div>
+                            <div class="kid-pointer"></div>
+                            <div class="mt-1 text-xs font-bold text-eduBlue bg-white/80 px-1 rounded shadow-sm">300N</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据仪表盘 -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-white p-4 rounded-xl card-shadow gauge-card border-t-4 border-slate-400">
+                    <p class="text-xs text-slate-500 mb-1"><i class="fa-solid fa-ruler-horizontal mr-1"></i>距O点水平距离</p>
+                    <p class="text-xl font-bold text-slate-700"><span id="val-x" class="">0.00</span> <span class="text-xs font-normal">m</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-xl card-shadow gauge-card border-t-4 border-eduYellow">
+                    <p class="text-xs text-slate-500 mb-1"><i class="fa-solid fa-weight-hanging mr-1"></i>D点对地总压力</p>
+                    <p class="text-xl font-bold text-eduYellow"><span id="val-f" class="">200</span> <span class="text-xs font-normal">N</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-xl card-shadow gauge-card border-t-4 border-eduRed">
+                    <p class="text-xs text-slate-500 mb-1"><i class="fa-solid fa-wave-square mr-1"></i>压敏电阻 (R)</p>
+                    <p class="text-xl font-bold text-eduRed"><span id="val-r" class="">25.0</span> <span class="text-xs font-normal">Ω</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-xl card-shadow gauge-card border-t-4 border-eduBlue">
+                    <p class="text-xs text-slate-500 mb-1"><i class="fa-solid fa-bolt mr-1"></i>电路电流 (I)</p>
+                    <p class="text-xl font-bold text-eduBlue"><span id="val-i" class="">0.17</span> <span class="text-xs font-normal">A</span></p>
+                </div>
+            </div>
+
+            <!-- 问题解析区 -->
+            <div class="bg-white p-6 rounded-2xl card-shadow flex-1">
+                <h3 class="font-bold text-xl mb-4 flex items-center text-slate-800">
+                    <i class="fa-solid fa-clipboard-check text-eduBlue mr-2"></i>推导与课堂思考题
+                </h3>
+                
+                <div class="space-y-4">
+                    
+                    <!-- Q1 -->
+                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                        <button class="w-full text-left p-4 bg-slate-50 hover:bg-slate-100 font-bold flex justify-between items-center outline-none" onclick="toggleAnswer('ans1')">
+                            <span class="">(1) 距O点越远，电流表示数如何变化？</span>
+                            <i class="fa-solid fa-chevron-down text-slate-400"></i>
+                        </button>
+                        <div id="ans1" class="answer-content bg-white px-4">
+                            <div class="py-3 text-sm text-slate-600 border-t border-slate-100 space-y-2 leading-relaxed">
+                                <p class="text-eduGreen font-bold">✅ 答案：逐渐变大。</p>
+                                <p class="">向左走 → 人的逆时针力矩增大 → CD杆必须提供更大的向上托力 → AB对CD向下压力增大 → 压敏电阻受压增大 → 阻值减小 → 总电阻减小 → 电流变大。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Q2 -->
+                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                        <button class="w-full text-left p-4 bg-slate-50 hover:bg-slate-100 font-bold flex justify-between items-center outline-none" onclick="toggleAnswer('ans2')">
+                            <span class="">(2) 向左走1m，压敏电阻变化量是多少？</span>
+                            <i class="fa-solid fa-chevron-down text-slate-400"></i>
+                        </button>
+                        <div id="ans2" class="answer-content bg-white px-4">
+                            <div class="py-3 text-sm text-slate-600 border-t border-slate-100 space-y-2 leading-relaxed">
+                                <p class="text-eduGreen font-bold">✅ 答案：减小了 5Ω。</p>
+                                <p class="">根据力矩平衡，向左走 1m 导致 C 点需增加向上托力 <b>300N × 1m / 3m = 100N</b>，从而压敏电阻受到的压力增加 100N。</p>
+                                <p class="">结合右侧 R-F 图象（斜率 -0.05），压力增加 100N，阻值对应减少 5Ω。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 核心推导：顺接第二问的结论 -->
+                    <div class="border border-blue-200 rounded-xl overflow-hidden bg-blue-50/50">
+                        <button class="w-full text-left p-4 hover:bg-blue-50 font-bold flex justify-between items-center outline-none text-eduBlue" onclick="toggleAnswer('ans0')">
+                            <span class="">💡 核心进阶：由上一问结论，推导电源电压 U=6V</span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div id="ans0" class="answer-content px-4">
+                            <div class="py-4 text-sm text-slate-700 border-t border-blue-100 space-y-3 leading-relaxed">
+                                <p class=""><b>1. 提取已知条件：</b>定值电阻 R₀=10Ω。<br>由第(2)问可知，向左走1m后，电阻减小了 5Ω。</p>
+                                <p class=""><b>2. 两次状态列方程：</b><br>
+                                   初始状态电流 0.2A： U / 0.2A = R₁ + 10<br>
+                                   移动后电流 0.24A： U / 0.24A = (R₁ - 5) + 10
+                                </p>
+                                <p class=""><b>3. 联立求解：</b><br>
+                                   化简两式：5U = R₁ + 10； (25/6)U = R₁ + 5<br>
+                                   两式相减得：(5 - 25/6)U = 5 ➔ <b class="text-eduRed text-lg">解得 U = 6V</b>。<br>
+                                   (同时代回可得初始点 <b class="text-eduBlue">R₁ = 20Ω</b>)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Q3 -->
+                    <div class="border border-slate-200 rounded-xl overflow-hidden">
+                        <button class="w-full text-left p-4 bg-slate-50 hover:bg-slate-100 font-bold flex justify-between items-center outline-none" onclick="toggleAnswer('ans3')">
+                            <span class="">(3) 从A走到B点，电路的电功率变化量是多少？</span>
+                            <i class="fa-solid fa-chevron-down text-slate-400"></i>
+                        </button>
+                        <div id="ans3" class="answer-content bg-white px-4">
+                            <div class="py-3 text-sm text-slate-600 border-t border-slate-100 space-y-2 leading-relaxed">
+                                <p class="text-eduGreen font-bold text-lg">✅ 答案：1.5 W。</p>
+                                <p class="text-slate-400 text-xs">(注：有了 U=6V，请拖动上方小人验证！)</p>
+                                <p class=""><b>在A点(最右端)：</b>人在支点右侧1m。产生顺时针力矩，C点(位于O左侧)被迫<b>向下拉</b>100N。导致向下总压 F = 200 - 100 = 100N。<br>查函数得出 R = 35 - 0.05(100) = 30Ω。电路总功率 P<sub>A</sub> = U² / R<sub>总</sub> = 36 / 40 = <b>0.9 W</b>。</p>
+                                <p class=""><b>在B点(最左端)：</b>人在支点左侧4m。C点提供极大的向上托力400N。导致向下总压 F = 200 + 400 = 600N。<br>查函数得出 R = 35 - 0.05(600) = 5Ω。此时总功率 P<sub>B</sub> = U² / R<sub>总</sub> = 36 / 15 = <b>2.4 W</b>。</p>
+                                <p class="">变化量 ΔP = 2.4W - 0.9W = <b>1.5 W</b>。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 右侧：占据4列 (图象与电路/功率表) -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- 动态 R-F 图像 (更新为 R=35-0.05F) -->
+            <div class="bg-white p-5 rounded-2xl card-shadow">
+                <h3 class="font-bold text-lg mb-3 flex items-center text-slate-700">
+                    <i class="fa-solid fa-chart-line text-eduGreen mr-2"></i>R-F 关系实时图象
+                </h3>
+                <div class="w-full bg-slate-50 rounded-lg p-2 border border-slate-100 flex justify-center">
+                    <canvas id="rfGraph" width="280" height="200"></canvas>
+                </div>
+                <div class="mt-3 text-sm text-slate-500 bg-blue-50 p-3 rounded-lg flex justify-between items-center">
+                    <span class="">解析：600N对应5Ω</span>
+                    <span class=""><b class="text-eduRed">R = 35 - 0.05F</b></span>
+                </div>
+            </div>
+
+            <!-- 图丙电路图 -->
+            <div class="bg-white p-4 rounded-2xl card-shadow flex flex-col items-center border border-slate-100">
+                <p class="text-sm font-bold text-slate-600 mb-2 w-full text-left"><i class="fa-solid fa-microchip mr-2"></i>图丙：物理电路图</p>
+                <!-- 使用 API 生成的一张标准串联电路图 -->
+                <img src="https://api.zcat.cn/udata/722630/png/eccbc87e4b5ce2fe28308fd9f2a7baf3_20260313103629.png" class="w-full rounded-lg shadow-sm border border-slate-200" alt="图片" style="width: 375px;">
+            </div>
+
+            <!-- 动态电功率面板 -->
+            <div class="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-2xl card-shadow text-white relative overflow-hidden flex flex-col justify-center">
+                <i class="fa-solid fa-bolt absolute -right-4 -bottom-4 text-8xl text-white opacity-5"></i>
+                
+                <h3 class="font-bold text-lg mb-6 flex items-center text-blue-300">
+                    <i class="fa-solid fa-gauge-high mr-2"></i>电路实时总电功率
+                </h3>
+                
+                <div class="text-center z-10">
+                    <div class="text-5xl font-black mb-2 glow-text tracking-tight flex justify-center items-end">
+                        <span id="val-power" class="">0.00</span> 
+                        <span class="text-2xl font-normal text-slate-300 ml-1 mb-1">W</span>
+                    </div>
+                    <p class="text-slate-400 text-sm mt-4 font-mono bg-slate-800/50 p-2 rounded">P = U² / R_总 = 36 / <span id="val-rtot" class="">40</span>Ω</p>
+                </div>
+                
+                <div class="mt-8 border-t border-slate-700 pt-4">
+                    <div class="flex justify-between text-xs text-slate-400 px-1">
+                        <span class="">A点: 0.9W</span>
+                        <span class="">B点: 2.4W</span>
+                    </div>
+                    <!-- 进度条 -->
+                    <div class="w-full h-2 bg-slate-700 rounded-full mt-2 overflow-hidden">
+                        <div id="power-bar" class="h-full bg-gradient-to-r from-blue-400 to-eduRed transition-all duration-300 w-[0%]"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- JavaScript 逻辑 -->
+    <script>
+        // --- 物理常量更新 ---
+        const U = 6.0;         
+        const R0 = 10.0;       
+        const len_AB = 5.0;    
+        
+        let currentPosMeters = 4.0; // 初始在O点
+
+        const leverTrack = document.getElementById('lever-track');
+        const kid = document.getElementById('kid');
+        const valX = document.getElementById('val-x');
+        const valF = document.getElementById('val-f');
+        const valR = document.getElementById('val-r');
+        const valI = document.getElementById('val-i');
+        const valRtot = document.getElementById('val-rtot');
+        const valPower = document.getElementById('val-power');
+        const powerBar = document.getElementById('power-bar');
+        
+        const forceCDisplay = document.getElementById('force-c-display');
+        const forceCText = document.getElementById('force-c-text');
+        const forceCIcon = document.getElementById('force-c-icon');
+        const forceDText = document.getElementById('force-d-text');
+
+        const canvas = document.getElementById('rfGraph');
+        const ctx = canvas.getContext('2d');
+
+        function calculatePhysics(posMeters) {
+            let x = 4.0 - posMeters; // 相对于O点向左的距离
+            let Fc = 100 * x;        // C点需要提供的向上托力
+            let F = 200 + Fc;        // 压敏电阻受到的总压力
+
+            // 完美的函数：R = 35 - 0.05F
+            let R = 35 - 0.05 * F;
+            if (R < 0) R = 0; 
+            if (R > 35) R = 35; 
+
+            let R_total = R0 + R;
+            let I = U / R_total;
+            let P = (U * U) / R_total;
+
+            return { x, Fc, F, R, I, P, R_total };
+        }
+
+        function updateUI(posMeters) {
+            const data = calculatePhysics(posMeters);
+            
+            valX.innerText = Math.abs(data.x).toFixed(2);
+            valF.innerText = Math.round(data.F);
+            valR.innerText = data.R.toFixed(1);
+            valI.innerText = data.I.toFixed(3);
+            valRtot.innerText = data.R_total.toFixed(1);
+            
+            valPower.innerText = data.P.toFixed(2);
+            // 功率进度条映射 (范围 0.9W 到 2.4W)
+            let powerPercent = ((data.P - 0.9) / (2.4 - 0.9)) * 100;
+            powerBar.style.width = `${Math.min(100, Math.max(0, powerPercent))}%`;
+            
+            if (Math.abs(data.Fc) < 0.1) {
+                forceCDisplay.style.opacity = '0';
+            } else {
+                forceCDisplay.style.opacity = '1';
+                if (data.Fc > 0) {
+                    forceCText.innerText = `向上托力 ${Math.round(data.Fc)}N`;
+                    forceCIcon.className = "fa-solid fa-arrow-up text-xl";
+                    forceCDisplay.style.top = "-65px";
+                    forceCDisplay.className = "force-arrow text-eduRed";
+                } else {
+                    forceCText.innerText = `向下拉力 ${Math.round(Math.abs(data.Fc))}N`;
+                    forceCIcon.className = "fa-solid fa-arrow-down text-xl";
+                    forceCDisplay.style.top = "10px";
+                    forceCDisplay.className = "force-arrow text-purple-600";
+                }
+            }
+
+            forceDText.innerText = `向下压力 ${Math.round(data.F)}N`;
+
+            valR.parentElement.className = `text-xl font-bold ${data.R < 10 ? 'text-eduRed' : 'text-slate-700'}`;
+            valI.parentElement.className = `text-xl font-bold ${data.I > 0.3 ? 'text-eduYellow' : 'text-eduBlue'}`;
+
+            drawGraph(data.F, data.R);
+        }
+
+        function drawGraph(currentF, currentR) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const padX = 35; const padY = 25;
+            const w = canvas.width - padX - 15; const h = canvas.height - padY - 15;
+
+            // 坐标轴
+            ctx.beginPath(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+            ctx.moveTo(padX, 10); ctx.lineTo(padX, canvas.height - padY); ctx.lineTo(canvas.width - 5, canvas.height - padY);
+            ctx.stroke();
+
+            // 标签 (Y轴最大值改为 35)
+            ctx.fillStyle = '#64748b'; ctx.font = '12px Arial';
+            ctx.fillText('R(Ω)', 5, 15); ctx.fillText('F(N)', canvas.width - 25, canvas.height - 5);
+            ctx.fillText('35', 10, padY + 5); 
+            ctx.fillText('0', 20, canvas.height - padY + 15); 
+            ctx.fillText('600', canvas.width - 35, canvas.height - padY + 15);
+
+            // 画函数直线 (起点0,35  终点600,5)
+            ctx.beginPath(); ctx.strokeStyle = '#4285F4'; ctx.lineWidth = 3;
+            ctx.moveTo(padX, padY); // 对应 F=0, R=35
+            let endY = canvas.height - padY - (5 / 35) * h; // 对应 F=600, R=5
+            ctx.lineTo(padX + w, endY); 
+            ctx.stroke();
+
+            // 动态定位当前红点
+            let ptX = padX + (currentF / 600) * w;
+            let ptY = canvas.height - padY - (currentR / 35) * h;
+            
+            // 辅助线
+            ctx.beginPath(); ctx.setLineDash([4, 4]); ctx.strokeStyle = '#EA4335'; ctx.lineWidth = 1;
+            ctx.moveTo(padX, ptY); ctx.lineTo(ptX, ptY); ctx.lineTo(ptX, canvas.height - padY);
+            ctx.stroke(); ctx.setLineDash([]);
+
+            // 红点
+            ctx.beginPath(); ctx.fillStyle = '#EA4335';
+            ctx.arc(ptX, ptY, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
+        }
+
+        let isDragging = false;
+        function setKidPosition(clientX) {
+            const rect = leverTrack.getBoundingClientRect();
+            let px = clientX - rect.left;
+            let percent = Math.max(0, Math.min(1, px / rect.width));
+            kid.style.left = `${percent * 100}%`;
+            currentPosMeters = percent * len_AB;
+            updateUI(currentPosMeters);
+        }
+
+        kid.addEventListener('mousedown', (e) => { isDragging = true; e.preventDefault(); });
+        document.addEventListener('mousemove', (e) => { if (isDragging) setKidPosition(e.clientX); });
+        document.addEventListener('mouseup', () => { isDragging = false; });
+
+        kid.addEventListener('touchstart', (e) => { isDragging = true; }, {passive: false});
+        document.addEventListener('touchmove', (e) => { 
+            if (isDragging) { e.preventDefault(); setKidPosition(e.touches[0].clientX); }
+        }, {passive: false});
+        document.addEventListener('touchend', () => { isDragging = false; });
+
+        function toggleAnswer(id) {
+            const el = document.getElementById(id);
+            const icon = el.previousElementSibling.querySelector('i');
+            if (el.classList.contains('open')) {
+                el.classList.remove('open');
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                el.classList.add('open');
+                icon.style.transform = 'rotate(180deg)';
+            }
+            icon.style.transition = 'transform 0.3s ease';
+        }
+
+        // 初始化渲染
+        updateUI(currentPosMeters);
+    </script>
+
+</body></html>

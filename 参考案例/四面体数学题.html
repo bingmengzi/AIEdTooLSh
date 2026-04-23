@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>四面体对棱垂直定理 - 互动探索课件</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 Three.js 核心及控制器 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.zcat.cn/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        /* 全局字体与基础配置 */
+        body {
+            font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #F5F7FB; /* 护眼浅蓝灰背景 */
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+        
+        /* 隐藏滚动条但保留滚动功能 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* 证明步骤卡片的过渡动画 */
+        .step-card {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .step-card.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 数学公式简易样式 */
+        .math {
+            font-family: "Times New Roman", Times, serif;
+            font-style: italic;
+            font-size: 1.1em;
+        }
+        .math-vector {
+            font-weight: bold;
+            font-style: normal;
+        }
+
+        /* 3D 容器强制按比例 */
+        #canvas-container {
+            touch-action: none; /* 防止触摸滑动时页面跟着滚 */
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6 lg:p-8 flex flex-col items-center text-gray-800">
+
+    <!-- 顶栏：课堂标题 -->
+    <header class="w-full max-w-7xl mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center text-2xl shadow-lg shadow-blue-500/30">
+                <i class="fa-solid fa-shapes"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 tracking-wide">立体几何探索室</h1>
+                <p class="text-sm text-gray-500">空间向量的应用：四面体对棱垂直定理</p>
+            </div>
+        </div>
+        <div class="hidden sm:flex px-4 py-2 bg-white rounded-full shadow-sm text-sm font-medium text-blue-600 border border-blue-100">
+            <i class="fa-solid fa-lightbulb mr-2 mt-1"></i>
+            尝试拖动左侧图形，多角度观察
+        </div>
+    </header>
+
+    <!-- 核心互动区域 -->
+    <main class="w-full max-w-7xl flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] min-h-[700px]">
+        
+        <!-- 左侧：3D 互动展示区 -->
+        <section class="w-full lg:w-5/12 bg-white rounded-2xl shadow-xl border border-gray-100 flex flex-col overflow-hidden relative">
+            <!-- 标题栏 -->
+            <div class="px-5 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                <h2 class="font-semibold text-lg flex items-center gap-2">
+                    <i class="fa-solid fa-cube text-blue-500"></i> 三维模型
+                </h2>
+                <button onclick="resetCamera()" class="text-sm text-gray-500 hover:text-blue-500 transition px-3 py-1 rounded hover:bg-blue-50">
+                    <i class="fa-solid fa-rotate-right mr-1"></i>复位视角
+                </button>
+            </div>
+            
+            <!-- Three.js 画布 -->
+            <div id="canvas-container" class="flex-grow w-full bg-gradient-to-br from-[#f8fafc] to-[#e2e8f0] cursor-grab active:cursor-grabbing relative">
+                <!-- 提示浮层 -->
+                <div class="absolute bottom-4 left-0 w-full flex justify-center pointer-events-none">
+                    <div class="bg-black/40 text-white px-4 py-1.5 rounded-full text-xs backdrop-blur-sm">
+                        单指旋转 / 双指缩放
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制面板 (与右侧推理联动) -->
+            <div class="p-4 bg-white border-t border-gray-100 grid grid-cols-3 gap-2">
+                <button id="btn-cond1" onclick="highlightEdges('AB', 'CD', 0x34A853)" class="py-2 flex flex-col items-center justify-center rounded-lg border-2 border-transparent bg-green-50 text-green-700 hover:border-green-300 transition group">
+                    <span class="text-xs text-green-600/70 mb-1">已知条件 1</span>
+                    <span class="font-bold font-mono">AB ⊥ CD</span>
+                </button>
+                <button id="btn-cond2" onclick="highlightEdges('AD', 'BC', 0xFBBC05)" class="py-2 flex flex-col items-center justify-center rounded-lg border-2 border-transparent bg-yellow-50 text-yellow-700 hover:border-yellow-300 transition">
+                    <span class="text-xs text-yellow-600/70 mb-1">已知条件 2</span>
+                    <span class="font-bold font-mono">AD ⊥ BC</span>
+                </button>
+                <button id="btn-result" onclick="highlightEdges('AC', 'BD', 0xEA4335)" class="py-2 flex flex-col items-center justify-center rounded-lg border-2 border-transparent bg-red-50 text-red-700 hover:border-red-300 transition">
+                    <span class="text-xs text-red-600/70 mb-1">求证结论</span>
+                    <span class="font-bold font-mono">AC ⊥ BD</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- 右侧：题目与推理区 -->
+        <section class="w-full lg:w-7/12 bg-white rounded-2xl shadow-xl border border-gray-100 flex flex-col overflow-hidden">
+            
+            <!-- 题目区 -->
+            <div class="p-6 md:p-8 bg-blue-50/50 border-b border-blue-100">
+                <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                    <span class="bg-blue-100 text-blue-600 w-8 h-8 rounded-lg flex items-center justify-center mr-3 text-lg shadow-sm"><i class="fa-solid fa-flag"></i></span>
+                    证明题
+                </h2>
+                <div class="text-lg text-gray-700 leading-relaxed bg-white p-4 rounded-xl shadow-sm border border-blue-50">
+                    在四面体 <span class="math">ABCD</span> 中，已知：<br>
+                    <div class="ml-4 mt-2 space-y-1">
+                        <span class="inline-block px-2 py-0.5 bg-green-100 text-green-800 rounded font-mono font-bold mr-2">AB ⊥ CD</span><br>
+                        <span class="inline-block px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded font-mono font-bold">AD ⊥ BC</span>
+                    </div>
+                    <div class="mt-3 font-bold border-t border-gray-100 pt-3 flex items-center">
+                        证明：<span class="inline-block px-2 py-0.5 bg-red-100 text-red-800 rounded font-mono ml-2">AC ⊥ BD</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 推理步骤区 -->
+            <div class="p-6 md:p-8 flex-grow overflow-y-auto no-scrollbar relative">
+                <div class="absolute top-6 right-8 text-blue-500 font-bold opacity-20 text-6xl pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i>
+                </div>
+                
+                <h3 class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chalkboard-user text-blue-500"></i> 推理过程 (向量法)
+                </h3>
+
+                <div class="space-y-4 relative z-10" id="steps-container">
+                    <!-- 步骤 1 -->
+                    <div class="step-card bg-gray-50 border border-gray-200 rounded-xl p-4 flex gap-4 active" id="step-1">
+                        <div class="w-8 h-8 shrink-0 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">1</div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-1">建立基底向量</h4>
+                            <p class="text-gray-600 text-sm md:text-base leading-relaxed">
+                                设点 <span class="math">A</span> 为空间原点，定义三个基底向量：<br>
+                                <span class="math"><b>b</b></span> = <span class="math">AB</span>,  &nbsp;&nbsp; 
+                                <span class="math"><b>c</b></span> = <span class="math">AC</span>,  &nbsp;&nbsp;
+                                <span class="math"><b>d</b></span> = <span class="math">AD</span>
+                            </p>
+                            <p class="text-gray-500 text-sm mt-2 bg-white px-3 py-2 rounded-lg border border-gray-100">
+                                则其他棱的向量可表示为：<br>
+                                <span class="math">CD</span> = <span class="math"><b>d</b> - <b>c</b></span><br>
+                                <span class="math">BC</span> = <span class="math"><b>c</b> - <b>b</b></span><br>
+                                <span class="math">BD</span> = <span class="math"><b>d</b> - <b>b</b></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 步骤 2 -->
+                    <div class="step-card hidden bg-green-50/50 border border-green-200 rounded-xl p-4 flex gap-4" id="step-2">
+                        <div class="w-8 h-8 shrink-0 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold">2</div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-1">转化已知条件（垂直 ⇔ 内积为0）</h4>
+                            <p class="text-gray-600 text-sm md:text-base">
+                                由已知条件展开内积：<br>
+                                <span class="text-green-700 font-medium">① 因为 AB ⊥ CD，所以：</span><br>
+                                <span class="math"><b>b</b> · (<b>d</b> - <b>c</b>) = 0</span>  &nbsp; ⇒ &nbsp; <span class="bg-white px-2 py-1 rounded shadow-sm text-blue-700"><span class="math"><b>b</b> · <b>d</b> = <b>b</b> · <b>c</b></span></span>
+                                <br><br>
+                                <span class="text-yellow-600 font-medium">② 因为 AD ⊥ BC，所以：</span><br>
+                                <span class="math"><b>d</b> · (<b>c</b> - <b>b</b>) = 0</span>  &nbsp; ⇒ &nbsp; <span class="bg-white px-2 py-1 rounded shadow-sm text-blue-700"><span class="math"><b>d</b> · <b>c</b> = <b>b</b> · <b>d</b></span></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 步骤 3 -->
+                    <div class="step-card hidden bg-blue-50/50 border border-blue-200 rounded-xl p-4 flex gap-4" id="step-3">
+                        <div class="w-8 h-8 shrink-0 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">3</div>
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-1">推导结论边对应的内积</h4>
+                            <p class="text-gray-600 text-sm md:text-base">
+                                综合①②可得核心等式：<br>
+                                <span class="font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-full text-sm inline-block my-2">
+                                    <span class="math"><b>b</b> · <b>c</b> = <b>b</b> · <b>d</b> = <b>c</b> · <b>d</b></span>
+                                </span><br>
+                                现在考察目标边 <span class="math">AC</span> 和 <span class="math">BD</span> 的内积：<br>
+                                <span class="math">AC</span> · <span class="math">BD</span> = <span class="math"><b>c</b> · (<b>d</b> - <b>b</b>)</span><br>
+                                = <span class="math"><b>c</b> · <b>d</b> - <b>c</b> · <b>b</b></span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 步骤 4 -->
+                    <div class="step-card hidden bg-red-50/50 border border-red-200 rounded-xl p-4 flex gap-4" id="step-4">
+                        <div class="w-8 h-8 shrink-0 rounded-full bg-red-100 text-red-600 flex items-center justify-center font-bold">4</div>
+                        <div>
+                            <h4 class="font-bold text-red-700 mb-1">得出结论</h4>
+                            <p class="text-gray-700 text-sm md:text-base">
+                                因为前面已证 <span class="math"><b>c</b> · <b>d</b> = <b>b</b> · <b>c</b></span> (即 <span class="math"><b>c</b> · <b>b</b></span>)，<br>
+                                所以代入上式得：<br>
+                                <span class="math">AC</span> · <span class="math">BD</span> = <span class="math"><b>c</b> · <b>d</b> - <b>c</b> · <b>b</b></span> = <span class="font-bold text-xl text-red-600">0</span><br><br>
+                                <span class="inline-block bg-red-600 text-white px-4 py-2 rounded-lg font-bold shadow-md">
+                                    <i class="fa-solid fa-check-circle mr-1"></i> 因此 AC ⊥ BD，证明完毕！
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部操作区 -->
+                <div class="mt-8 flex justify-center sticky bottom-0 bg-white/90 backdrop-blur pt-4 pb-2 border-t border-gray-100 z-20">
+                    <button id="btn-next-step" onclick="nextStep()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg shadow-blue-500/30 transition transform hover:-translate-y-1 flex items-center text-lg w-full max-w-xs justify-center">
+                        <span>下一步推导</span>
+                        <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </button>
+                    <button id="btn-reset-step" onclick="resetSteps()" class="hidden bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-8 rounded-full shadow transition flex items-center text-lg w-full max-w-xs justify-center">
+                        <i class="fa-solid fa-rotate-left mr-2"></i>
+                        <span>重新开始</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // ==========================================
+        // 1. 推理步骤逻辑控制
+        // ==========================================
+        let currentStep = 1;
+        const totalSteps = 4;
+
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                const nextStepEl = document.getElementById(`step-${currentStep}`);
+                nextStepEl.classList.remove('hidden');
+                // 触发 reflow 以确保 transition 生效
+                void nextStepEl.offsetWidth; 
+                nextStepEl.classList.add('active');
+                
+                // 滚动到底部
+                document.getElementById('steps-container').parentElement.scrollTo({
+                    top: 1000,
+                    behavior: 'smooth'
+                });
+
+                // 联动3D高亮
+                if(currentStep === 2) {
+                    highlightEdges('AB', 'CD', 0x34A853);
+                    setTimeout(() => highlightEdges('AD', 'BC', 0xFBBC05), 1500);
+                } else if(currentStep === 4) {
+                    highlightEdges('AC', 'BD', 0xEA4335);
+                }
+
+                // 更新按钮状态
+                if (currentStep === totalSteps) {
+                    document.getElementById('btn-next-step').classList.add('hidden');
+                    document.getElementById('btn-reset-step').classList.remove('hidden');
+                }
+            }
+        }
+
+        function resetSteps() {
+            for (let i = 2; i <= totalSteps; i++) {
+                const el = document.getElementById(`step-${i}`);
+                el.classList.remove('active');
+                setTimeout(() => el.classList.add('hidden'), 300); // 等待动画完成
+            }
+            currentStep = 1;
+            document.getElementById('btn-next-step').classList.remove('hidden');
+            document.getElementById('btn-reset-step').classList.add('hidden');
+            resetColors();
+        }
+
+        // ==========================================
+        // 2. Three.js 3D 渲染逻辑
+        // ==========================================
+        const container = document.getElementById('canvas-container');
+        let scene, camera, renderer, controls;
+        
+        // 存储几何图形对象以便交互
+        const vertexMeshes = {};
+        const edgeMeshes = {};
+        
+        // 配色方案
+        const COLOR_DEFAULT_EDGE = 0xB0C4DE; // 浅蓝灰
+        const COLOR_VERTEX = 0x4285F4;      // 蓝色点
+
+        init3D();
+        animate();
+
+        function init3D() {
+            // 场景设置
+            scene = new THREE.Scene();
+            
+            // 相机设置 (透视相机)
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(12, 10, 15);
+
+            // 渲染器设置
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // 控制器 (允许鼠标拖拽旋转)
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enablePan = false; // 禁止平移，保持居中
+            controls.minDistance = 10;
+            controls.maxDistance = 30;
+
+            // 添加灯光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 15);
+            scene.add(directionalLight);
+
+            buildTetrahedron();
+
+            // 窗口自适应
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function buildTetrahedron() {
+            // 为了构造一个自然满足题意的四面体，我们使用三条互相垂直的边交于一点的“直角四面体”
+            // 设A为原点，B在x轴，C在y轴，D在z轴。
+            // 这样 AB=(x,0,0), CD=(0,-y,z) -> 内积=0 -> 垂直。
+            // 坐标：A(-2,-2,-2) 以便几何体中心大致在原点
+            const offset = -2;
+            const size = 6;
+            const points = {
+                A: new THREE.Vector3(offset, offset, offset),
+                B: new THREE.Vector3(offset + size, offset, offset),
+                C: new THREE.Vector3(offset, offset + size + 1, offset), // 长短不一更一般化
+                D: new THREE.Vector3(offset, offset, offset + size + 2)
+            };
+
+            // 创建顶点球体及标签
+            const sphereGeo = new THREE.SphereGeometry(0.3, 32, 32);
+            const sphereMat = new THREE.MeshPhongMaterial({ color: COLOR_VERTEX });
+
+            for (const [name, pos] of Object.entries(points)) {
+                // 球体
+                const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+                sphere.position.copy(pos);
+                scene.add(sphere);
+                vertexMeshes[name] = sphere;
+
+                // 标签 (SpriteCanvas)
+                const label = createTextSprite(name);
+                // 根据位置稍微偏移标签，防止被球体挡住
+                label.position.copy(pos).add(new THREE.Vector3(0.5, 0.5, 0));
+                scene.add(label);
+            }
+
+            // 创建 6 条棱 (线段具有一定粗细，方便观察)
+            createEdge('AB', points.A, points.B);
+            createEdge('AC', points.A, points.C);
+            createEdge('AD', points.A, points.D);
+            createEdge('BC', points.B, points.C);
+            createEdge('BD', points.B, points.D);
+            createEdge('CD', points.C, points.D);
+        }
+
+        function createEdge(name, p1, p2) {
+            const distance = p1.distanceTo(p2);
+            const cylinderGeo = new THREE.CylinderGeometry(0.08, 0.08, distance, 16);
+            
+            // 将圆柱体的中心点移到一半的位置，使其延 y 轴生长
+            cylinderGeo.translate(0, distance / 2, 0);
+            
+            // 初始材质设为浅灰
+            const material = new THREE.MeshPhongMaterial({ color: COLOR_DEFAULT_EDGE });
+            const cylinder = new THREE.Mesh(cylinderGeo, material);
+            
+            // 定位并旋转对齐两点
+            cylinder.position.copy(p1);
+            cylinder.lookAt(p2);
+            
+            // 解决 CylinderGeometry 默认沿着 Y 轴，而 lookAt 是 Z 轴的问题
+            cylinder.rotateX(Math.PI / 2);
+
+            scene.add(cylinder);
+            edgeMeshes[name] = cylinder;
+            
+            // 同时保存反向名称，以便查询
+            const reverseName = name[1] + name[0];
+            edgeMeshes[reverseName] = cylinder;
+        }
+
+        // 使用 Canvas 生成文字精灵作为 3D 标签
+        function createTextSprite(text) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 128;
+            canvas.height = 128;
+            
+            // 绘制文字
+            context.font = "Bold 64px Arial";
+            context.fillStyle = "rgba(255, 255, 255, 0.9)";
+            // 画个背景框让字更清楚
+            context.beginPath();
+            context.arc(64, 64, 40, 0, Math.PI * 2);
+            context.fill();
+
+            context.fillStyle = "#1e293b"; // 深色文字
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            context.fillText(text, 64, 64);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false }); // depthTest=false保证字在最前面
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(2, 2, 1);
+            return sprite;
+        }
+
+        // 交互：高亮一组对棱
+        function highlightEdges(edgeName1, edgeName2, colorHex) {
+            resetColors(); // 先重置
+            
+            if(edgeMeshes[edgeName1]) {
+                edgeMeshes[edgeName1].material.color.setHex(colorHex);
+                // 稍微变粗一点以强调
+                edgeMeshes[edgeName1].scale.set(1.5, 1, 1.5); 
+            }
+            if(edgeMeshes[edgeName2]) {
+                edgeMeshes[edgeName2].material.color.setHex(colorHex);
+                edgeMeshes[edgeName2].scale.set(1.5, 1, 1.5);
+            }
+            
+            // 为了让高亮的两条边转到视野前方，做一个简单的相机动画(简化处理，不加复杂tween)
+            // 这里我们保持原样，只做色彩变化，不强行改变视角打断用户操作
+        }
+
+        function resetColors() {
+            Object.keys(edgeMeshes).forEach(key => {
+                if(key.length === 2) { // 过滤掉别名
+                    edgeMeshes[key].material.color.setHex(COLOR_DEFAULT_EDGE);
+                    edgeMeshes[key].scale.set(1, 1, 1);
+                }
+            });
+        }
+
+        function resetCamera() {
+            camera.position.set(12, 10, 15);
+            controls.target.set(0, 0, 0);
+            controls.update();
+            resetColors();
+        }
+
+        function onWindowResize() {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+    </script>
+</body>
+</html>

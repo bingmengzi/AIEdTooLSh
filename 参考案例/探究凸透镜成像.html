@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>探究凸透镜成像 - 物理内核重构版</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #FFF0F3; --bg-canvas: #FFF5F7; --bg-dot: #FECDD3;
+            --primary: #EC4899; --primary-light: #FCE7F3; --primary-btn: #F43F5E;
+            --slider-track: #FFE4E6; --slider-thumb: #FDA4AF;
+            --card-bg: rgba(255, 255, 255, 0.96); --border-color: #FBCFE8;
+            --text-main: #4B5563; --tab-inactive: #9CA3AF; --input-bg: #FDF2F8;
+            --candle-stripe: #FDA4AF; --candle-stroke: #FECDD3;
+            --ray-real: #FB7185; --ray-virtual: #FDA4AF;
+        }
+        [data-theme="blue"] {
+            --bg-body: #EFF6FF; --bg-canvas: #F0F9FF; --bg-dot: #BFDBFE;
+            --primary: #3B82F6; --primary-light: #DBEAFE; --primary-btn: #2563EB;
+            --slider-track: #DBEAFE; --slider-thumb: #93C5FD;
+            --card-bg: rgba(255, 255, 255, 0.96); --border-color: #BFDBFE;
+            --candle-stripe: #60A5FA; --candle-stroke: #BFDBFE;
+            --ray-real: #60A5FA; --ray-virtual: #93C5FD;
+        }
+
+        body { font-family: 'Comic Sans MS', 'Microsoft YaHei', sans-serif; user-select: none; background: var(--bg-body); color: var(--text-main); transition: background 0.5s; overscroll-behavior: none; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%;
+            background: var(--slider-thumb); border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-top: -7px; cursor: pointer; transition: transform 0.1s; 
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: var(--slider-track); border-radius: 10px; }
+
+        .num-input {
+            background: var(--input-bg); border: 1px solid var(--border-color); color: var(--primary);
+            border-radius: 6px; padding: 1px 4px; width: 55px; text-align: center;
+            font-family: monospace; font-weight: bold; font-size: 13px; outline: none;
+        }
+        .num-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-light); }
+
+        .canvas-container { background: var(--bg-canvas); background-image: radial-gradient(var(--bg-dot) 2px, transparent 2px); background-size: 24px 24px; transition: 0.5s; }
+        .cute-card { background: var(--card-bg); backdrop-filter: blur(12px); border: 2px solid var(--border-color); border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.05); transition: border-color 0.5s; }
+        
+        .panel-section { display: none; height: 100%; flex-direction: column; overflow: hidden; }
+        .panel-section.active { display: flex; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        td, th { white-space: nowrap; vertical-align: middle; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <header class="h-14 bg-white/80 backdrop-blur-sm flex items-center justify-between px-6 z-20 flex-shrink-0 border-b-2" style="border-color: var(--border-color);">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 text-white rounded-xl flex items-center justify-center text-lg shadow-md animate-[bounce_3s_infinite]" style="background-color: var(--primary);">
+                <i class="fa-solid fa-fire-flame-curved"></i>
+            </div>
+            <h1 class="text-lg font-bold tracking-wide" style="color: var(--primary);">凸透镜成像全解</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="hidden md:flex gap-4 text-xs font-bold text-gray-400 bg-white/50 px-3 py-1.5 rounded-full border" style="border-color: var(--border-color);">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full" style="background-color: var(--ray-real);"></span> 实际光线</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full" style="background-color: var(--ray-virtual);"></span> 虚像延长线</span>
+            </div>
+            <button onclick="toggleTheme()" class="w-9 h-9 rounded-full bg-white border-2 flex items-center justify-center shadow-sm transition hover:rotate-12" style="border-color: var(--border-color); color: var(--primary);">
+                <i class="fa-solid fa-shirt"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden p-3 gap-3">
+        <aside class="w-[400px] cute-card flex flex-col z-10 flex-shrink-0 overflow-hidden relative">
+            <div class="flex p-2 gap-2 border-b flex-shrink-0" style="border-color: var(--border-color); background: var(--primary-light);">
+                <button onclick="switchTab('exp')" class="tab-btn flex-1 py-2 text-xs font-bold rounded-xl transition-all" id="btn-exp"><i class="fa-solid fa-flask mr-1"></i> 实验</button>
+                <button onclick="switchTab('know')" class="tab-btn flex-1 py-2 text-xs font-bold rounded-xl transition-all" id="btn-know"><i class="fa-solid fa-book-open mr-1"></i> 知识</button>
+                <button onclick="switchTab('anim')" class="tab-btn flex-1 py-2 text-xs font-bold rounded-xl transition-all" id="btn-anim"><i class="fa-solid fa-film mr-1"></i> 动画</button>
+            </div>
+
+            <div class="flex-1 overflow-hidden relative bg-white/50">
+                <div id="panel-exp" class="panel-section active">
+                    <div class="p-3 border-b space-y-2 flex-shrink-0 bg-white/40" style="border-color: var(--border-color);">
+                        <div class="flex items-center gap-2">
+                            <label class="text-[11px] font-bold text-gray-500 w-8">焦距f</label>
+                            <input type="range" class="inp-range-f flex-1" min="5" max="15" step="0.5" value="10">
+                            <input type="number" class="num-input inp-num-f" value="10.0" min="5" max="15" step="0.5">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-[11px] font-bold text-gray-500 w-8">物距u</label>
+                            <input type="range" class="inp-range-u flex-1" min="2" max="60" step="0.1" value="30">
+                            <input type="number" class="num-input inp-num-u" value="30.0" min="2" max="60" step="0.1">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <label class="text-[11px] font-bold text-gray-400 w-8">像距v</label>
+                            <input type="range" class="inp-range-v flex-1" min="10" max="100" step="0.5" value="15">
+                            <input type="number" class="num-input inp-num-v text-gray-500 bg-gray-50" value="15.0" readonly>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex flex-col min-h-0 bg-white m-3 rounded-xl border shadow-sm overflow-hidden" style="border-color: var(--border-color);">
+                        <div class="bg-gray-50 p-2 border-b flex justify-between items-center flex-shrink-0" style="border-color: var(--border-color);">
+                            <span class="text-xs font-bold text-gray-500 ml-1">实验记录</span>
+                            <div class="flex gap-2">
+                                <button onclick="clearData()" class="text-[10px] text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition"><i class="fa-solid fa-trash-can mr-1"></i>清空</button>
+                                <button onclick="record()" class="text-[10px] text-white px-3 py-1 rounded-full shadow hover:shadow-md transition active:scale-95 flex items-center gap-1" style="background-color: var(--primary-btn);"><i class="fa-solid fa-plus"></i> 记录</button>
+                            </div>
+                        </div>
+                        <div class="flex-1 overflow-auto">
+                            <table class="w-full text-[11px] text-left">
+                                <thead class="bg-gray-50/80 text-gray-500 sticky top-0 backdrop-blur-sm z-10 border-b" style="border-color: var(--border-color);">
+                                    <tr><th class="p-2 pl-3 w-10">序号</th><th class="p-2 w-14">u(cm)</th><th class="p-2 w-14">v(cm)</th><th class="p-2 min-w-[100px]">像的性质</th><th class="p-2 w-16">应用</th><th class="p-2 w-10 text-center">操作</th></tr>
+                                </thead>
+                                <tbody id="table-body-exp" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div id="panel-know" class="panel-section p-4 space-y-4 overflow-y-auto">
+                    <div class="bg-white rounded-xl border shadow-sm overflow-hidden flex-shrink-0" style="border-color: var(--border-color);">
+                        <div class="px-3 py-2 bg-gradient-to-r from-gray-50 to-white border-b flex justify-between items-center" style="border-color: var(--border-color);">
+                            <div class="flex items-center gap-2"><i class="fa-solid fa-table text-orange-500"></i><h3 class="font-bold text-sm text-gray-700">成像规律表</h3></div>
+                            <span class="text-[10px] font-mono font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100">f = <span class="val-f">10.0</span> cm</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-[11px] text-left">
+                                <thead class="bg-gray-50/80 text-gray-500">
+                                    <tr><th class="p-2 pl-3 border-b">u范围</th><th class="p-2 border-b">v范围</th><th class="p-2 border-b">像的性质</th><th class="p-2 border-b">应用</th></tr>
+                                </thead>
+                                <tbody class="divide-y text-gray-600" style="border-color: #F3F4F6;">
+                                    <tr class="hover:bg-blue-50/30"><td class="p-2 pl-3 font-mono">u &gt; 2f</td><td class="p-2 font-mono text-gray-400">f&lt;v&lt;2f</td><td class="p-2">倒立 缩小 实像</td><td class="p-2 font-bold text-blue-500">照相机</td></tr>
+                                    <tr class="hover:bg-blue-50/30 bg-blue-50/20"><td class="p-2 pl-3 font-mono font-bold text-blue-600">u = 2f</td><td class="p-2 font-mono text-gray-400">v=2f</td><td class="p-2 font-bold">倒立 等大 实像</td><td class="p-2 text-gray-500 font-bold">测焦距</td></tr>
+                                    <tr class="hover:bg-blue-50/30"><td class="p-2 pl-3 font-mono">f&lt;u&lt;2f</td><td class="p-2 font-mono text-gray-400">v&gt;2f</td><td class="p-2">倒立 放大 实像</td><td class="p-2 font-bold text-blue-500">投影仪</td></tr>
+                                    <tr class="bg-gray-50/50"><td class="p-2 pl-3 font-mono font-bold text-gray-500">u = f</td><td class="p-2 font-mono text-gray-400">∞</td><td class="p-2 text-gray-400 italic">不成像 (平行光)</td><td class="p-2 text-gray-500 font-bold">探照灯</td></tr>
+                                    <tr class="bg-orange-50/30"><td class="p-2 pl-3 font-mono font-bold text-orange-500">u &lt; f</td><td class="p-2 font-mono text-gray-400">同侧</td><td class="p-2 font-bold text-orange-500">正立 放大 虚像</td><td class="p-2 font-bold text-orange-500">放大镜</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="bg-gradient-to-br from-white to-orange-50 p-5 rounded-xl border shadow-sm flex-shrink-0" style="border-color: var(--border-color);">
+                        <h3 class="font-bold text-base mb-3 flex items-center gap-2 text-orange-500"><i class="fa-solid fa-fire"></i> 极速记忆口诀</h3>
+                        <ul class="text-base text-gray-700 space-y-3 pl-1 list-none leading-relaxed">
+                            <li class="flex items-start gap-3"><span class="bg-orange-100 text-orange-600 rounded-md px-2 py-0.5 text-xs font-bold mt-1 flex-shrink-0">界限</span><span class="font-bold">一倍焦距分虚实，二倍焦距分大小</span></li>
+                            <li class="flex items-start gap-3"><span class="bg-blue-100 text-blue-600 rounded-md px-2 py-0.5 text-xs font-bold mt-1 flex-shrink-0">实像</span><span class="font-bold text-blue-700">实像倒立异侧现，物近像远像变大</span></li>
+                            <li class="flex items-start gap-3"><span class="bg-green-100 text-green-600 rounded-md px-2 py-0.5 text-xs font-bold mt-1 flex-shrink-0">虚像</span><span class="font-bold text-green-700">虚像正立同侧现，物远像远像变大</span></li>
+                        </ul>
+                    </div>
+                    <div class="h-2 flex-shrink-0"></div>
+                </div>
+                <div id="panel-anim" class="panel-section">
+                    <div class="p-4 border-b bg-white/60 flex-shrink-0" style="border-color: var(--border-color);">
+                        <div class="flex items-center gap-4">
+                            <button id="btn-play" onclick="toggleAnimation()" class="w-12 h-12 rounded-full flex items-center justify-center text-xl text-white shadow-lg transition-transform hover:scale-105 active:scale-95 flex-shrink-0" style="background-color: var(--primary-btn);"><i class="fa-solid fa-play ml-1"></i></button>
+                            <div class="flex-1 space-y-1">
+                                <div class="flex justify-between text-xs font-bold text-gray-500"><span>倍速播放</span><span id="speed-display" style="color: var(--primary);">1.0x</span></div>
+                                <input type="range" id="anim-speed" min="0.25" max="3.0" step="0.25" value="1.0" class="w-full h-2 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex flex-col min-h-0 bg-white m-3 rounded-xl border shadow-sm overflow-hidden" style="border-color: var(--border-color);">
+                        <div class="bg-gray-50 p-2 border-b flex justify-between items-center flex-shrink-0" style="border-color: var(--border-color);">
+                            <div class="flex gap-2 text-xs items-center"><span class="font-bold ml-1" style="color: var(--primary);">u: <span class="val-u">30.0</span></span><button onclick="clearData()" class="text-[10px] text-red-400 hover:text-red-600 underline ml-2">清空</button></div>
+                            <button onclick="record()" class="text-[10px] text-white px-3 py-1 rounded-full hover:shadow transition" style="background-color: var(--primary-btn);"><i class="fa-solid fa-camera"></i> 抓拍</button>
+                        </div>
+                        <div class="overflow-auto flex-1">
+                            <table class="w-full text-[11px] text-left">
+                                <thead class="bg-gray-50 sticky top-0 backdrop-blur border-b" style="border-color: var(--border-color);">
+                                    <tr><th class="p-2 pl-3">序号</th><th class="p-2">u</th><th class="p-2">v</th><th class="p-2 min-w-[80px]">像的性质</th><th class="p-2">应用</th><th class="p-2 text-center">操作</th></tr>
+                                </thead>
+                                <tbody id="table-body-anim" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <div class="flex-1 relative cute-card overflow-hidden">
+            <div class="absolute inset-0 canvas-container"></div>
+            <div class="absolute bottom-0 left-0 right-0 h-10 bg-[#57534E] flex items-center justify-between px-6 text-[11px] text-[#A8A29E] font-mono pointer-events-none z-0 rounded-b-[18px]"><span>0cm</span><span class="tracking-[4px] opacity-40">OPTICAL BENCH</span><span>100cm</span></div>
+            <canvas id="stage" class="relative z-10 w-full h-full cursor-crosshair touch-none"></canvas>
+            <div id="drag-hint" class="absolute top-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-5 py-2 rounded-full shadow-lg text-sm font-bold pointer-events-none border animate-pulse transition-opacity duration-500" style="border-color: var(--border-color); color: var(--primary);"><i class="fa-solid fa-hand-pointer mr-2"></i>拖动可爱的蜡烛</div>
+        </div>
+    </main>
+
+    <script>
+        let currentTheme = 'pink';
+        let isAnimating = false;
+        let animationId = null;
+        let recordCount = 0;
+
+        const state = { f: 10.0, u: 30.0, pxPerCm: 15, isDragging: false, candleH: 95 };
+        const themeConfig = {
+            pink: { candleStripe: '#FDA4AF', candleStroke: '#FECDD3', lensFill: 'rgba(167, 243, 208, 0.2)', lensStroke: '#34D399', rayVirtual: '#FDA4AF' },
+            blue: { candleStripe: '#60A5FA', candleStroke: '#BFDBFE', lensFill: 'rgba(232, 121, 249, 0.15)', lensStroke: '#C084FC', rayVirtual: '#93C5FD' }
+        };
+
+        const canvas = document.getElementById('stage');
+        const ctx = canvas.getContext('2d');
+
+        function init() {
+            window.addEventListener('resize', resize);
+            resize();
+            setupInputs();
+            canvas.addEventListener('mousedown', startDrag);
+            canvas.addEventListener('touchstart', startDrag, {passive: false});
+            window.addEventListener('mousemove', onDrag);
+            window.addEventListener('touchmove', onDrag, {passive: false});
+            window.addEventListener('mouseup', endDrag);
+            window.addEventListener('touchend', endDrag);
+            document.getElementById('anim-speed').addEventListener('input', e => { document.getElementById('speed-display').innerText = e.target.value + 'x'; });
+            switchTab('exp');
+            renderLoop(); 
+        }
+
+        function renderLoop() {
+            if (!isAnimating && !state.isDragging) draw();
+            requestAnimationFrame(renderLoop);
+        }
+
+        function setupInputs() {
+            const updateF = (v) => { if(isNaN(v))return; state.f = Math.max(5, Math.min(15, parseFloat(v))); updateAllUI(); };
+            document.querySelectorAll('.inp-range-f, .inp-num-f').forEach(el => el.addEventListener('input', e => updateF(e.target.value)));
+            
+            const updateU = (v) => { if(isNaN(v))return; stopAnimation(); state.u = Math.max(2, Math.min(60, parseFloat(v))); updateAllUI(); };
+            document.querySelectorAll('.inp-range-u, .inp-num-u').forEach(el => el.addEventListener('input', e => updateU(e.target.value)));
+
+            const updateV = (v) => {
+                if(isNaN(v)) return; let val = parseFloat(v);
+                if(Math.abs(val - state.f) < 0.5) val = state.f + 0.5;
+                let newU = (val * state.f) / (val - state.f);
+                if(newU < 2) newU = 2; if(newU > 60) newU = 60;
+                stopAnimation(); state.u = newU; updateAllUI();
+            };
+            document.querySelectorAll('.inp-range-v').forEach(el => el.addEventListener('input', e => updateV(e.target.value)));
+            document.querySelectorAll('.inp-num-v').forEach(el => el.addEventListener('change', e => updateV(e.target.value))); 
+        }
+
+        function switchTab(id) {
+            ['exp', 'know', 'anim'].forEach(tab => {
+                const btn = document.getElementById(`btn-${tab}`);
+                const panel = document.getElementById(`panel-${tab}`);
+                if (tab === id) {
+                    btn.style.backgroundColor = currentTheme === 'pink' ? '#FBCFE8' : '#DBEAFE';
+                    btn.style.color = currentTheme === 'pink' ? '#BE185D' : '#1D4ED8';
+                    panel.classList.add('active');
+                } else {
+                    btn.style.backgroundColor = 'transparent';
+                    btn.style.color = 'var(--tab-inactive)';
+                    panel.classList.remove('active');
+                }
+            });
+            if (id !== 'anim' && isAnimating) toggleAnimation();
+        }
+
+        function calc() {
+            const { f, u } = state;
+            let v = Infinity, m = Infinity, type = 'parallel', app = '--';
+            if (Math.abs(u - f) < 0.1) {
+                type = 'parallel'; app = '探照灯';
+            } else {
+                v = (u * f) / (u - f); m = -v / u; type = v > 0 ? 'real' : 'virtual';
+                if (Math.abs(u - 2*f) < 0.1) app = '测焦距';
+                else if (u > 2*f) app = '照相机';
+                else if (u > f && u < 2*f) app = '投影仪';
+                else if (u < f) app = '放大镜';
+            }
+            return { v, m, type, app };
+        }
+
+        function updateAllUI() {
+            const res = calc();
+            document.querySelectorAll('.val-f').forEach(el => el.textContent = state.f.toFixed(1));
+            document.querySelectorAll('.val-u').forEach(el => el.textContent = state.u.toFixed(1));
+            const active = document.activeElement;
+            if(!active.classList.contains('inp-range-f') && !active.classList.contains('inp-num-f')) {
+                document.querySelectorAll('.inp-range-f').forEach(el => el.value = state.f);
+                document.querySelectorAll('.inp-num-f').forEach(el => el.value = state.f.toFixed(1));
+            }
+            if(!active.classList.contains('inp-range-u') && !active.classList.contains('inp-num-u')) {
+                document.querySelectorAll('.inp-range-u').forEach(el => el.value = state.u);
+                document.querySelectorAll('.inp-num-u').forEach(el => el.value = state.u.toFixed(1));
+            }
+            if(!active.classList.contains('inp-range-v') && !active.classList.contains('inp-num-v')) {
+                const vDisplay = (res.v === Infinity || res.v < 0) ? 100 : res.v;
+                document.querySelectorAll('.inp-range-v').forEach(el => el.value = vDisplay);
+                document.querySelectorAll('.inp-num-v').forEach(el => el.value = vDisplay.toFixed(1));
+            }
+        }
+
+        function toggleAnimation() { if (isAnimating) stopAnimation(); else startAnimation(); }
+        function startAnimation() {
+            if (isAnimating) return;
+            isAnimating = true;
+            document.getElementById('btn-play').innerHTML = '<i class="fa-solid fa-pause"></i>';
+            document.getElementById('btn-play').classList.add('animate-pulse');
+            if(state.u < 3) state.u = 60;
+            let lastTime = performance.now();
+            function loop(time) {
+                if (!isAnimating) return;
+                const dt = time - lastTime; lastTime = time;
+                const speedMult = Number(document.getElementById('anim-speed').value);
+                state.u -= 0.02 * dt * speedMult;
+                if (state.u < 2.5) state.u = 60.0;
+                updateAllUI(); draw();
+                animationId = requestAnimationFrame(loop);
+            }
+            animationId = requestAnimationFrame(loop);
+        }
+        function stopAnimation() {
+            isAnimating = false;
+            cancelAnimationFrame(animationId);
+            document.getElementById('btn-play').innerHTML = '<i class="fa-solid fa-play ml-1"></i>';
+            document.getElementById('btn-play').classList.remove('animate-pulse');
+        }
+
+        function record() {
+            recordCount++;
+            const res = calc();
+            let nature = "";
+            if(res.type === 'parallel') nature = "不成像 (平行光)";
+            else nature = (res.type === 'real' ? '倒立 ' : '正立 ') + (Math.abs(res.m) > 1.05 ? '放大 ' : (Math.abs(res.m) < 0.95 ? '缩小 ' : '等大 ')) + (res.type === 'real' ? '实像' : '虚像');
+            const rowId = 'row-' + Date.now();
+            const rowHtml = `<td class="p-2 pl-3 text-gray-400 font-mono">${recordCount}</td><td class="p-2 font-bold font-mono" style="color: var(--primary);">${state.u.toFixed(1)}</td><td class="p-2 text-gray-500 font-mono">${res.v===Infinity?'∞':Math.abs(res.v).toFixed(1)}</td><td class="p-2 text-gray-500 text-[10px] whitespace-nowrap">${nature}</td><td class="p-2 text-gray-500 text-[10px] whitespace-nowrap">${res.app}</td><td class="p-2 text-center"><button onclick="deleteRow('${rowId}')" class="text-red-400 hover:text-red-600 transition"><i class="fa-solid fa-trash-can"></i></button></td>`;
+            ['table-body-exp', 'table-body-anim'].forEach(id => {
+                const tr = document.createElement('tr'); tr.id = rowId + '-' + id; tr.dataset.group = rowId;
+                tr.className = "border-b transition-colors hover:bg-gray-50"; tr.style.borderColor = "var(--border-color)";
+                tr.innerHTML = rowHtml; document.getElementById(id).appendChild(tr);
+            });
+        }
+        window.deleteRow = function(id) { document.querySelectorAll(`tr[data-group="${id}"]`).forEach(el => el.remove()); }
+        window.clearData = function() {
+            if(confirm('确定要清空所有数据吗？')) {
+                document.getElementById('table-body-exp').innerHTML = '';
+                document.getElementById('table-body-anim').innerHTML = '';
+                recordCount = 0;
+            }
+        }
+        function resize() { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; state.pxPerCm = canvas.width / 85; draw(); }
+
+        // --- 核心绘图逻辑 ---
+
+        // 通用画线函数：绘制一条直线 (y - y1) = k(x - x1)
+        // 自动裁剪到屏幕范围，根据 dashRange 决定哪段是虚线
+        function drawClippedLine(x1, y1, slope, dashRanges, color, arrowAt) {
+            const w = canvas.width, h = canvas.height;
+            // 找到直线与屏幕边界的两个交点
+            let points = [];
+            // Left (x=0)
+            let yAt0 = y1 + slope * (0 - x1);
+            if(yAt0 >= 0 && yAt0 <= h) points.push({x:0, y:yAt0});
+            // Right (x=w)
+            let yAtW = y1 + slope * (w - x1);
+            if(yAtW >= 0 && yAtW <= h) points.push({x:w, y:yAtW});
+            // Top (y=0)
+            if(slope !== 0) {
+                let xAt0 = x1 + (0 - y1) / slope;
+                if(xAt0 > 0 && xAt0 < w) points.push({x:xAt0, y:0});
+            }
+            // Bottom (y=h)
+            if(slope !== 0) {
+                let xAtH = x1 + (h - y1) / slope;
+                if(xAtH > 0 && xAtH < w) points.push({x:xAtH, y:h});
+            }
+
+            // 去重并排序
+            points.sort((a,b) => a.x - b.x);
+            if(points.length < 2) return; // 不在屏幕内
+
+            const start = points[0];
+            const end = points[points.length-1];
+
+            // 绘制
+            ctx.beginPath();
+            
+            // 简单处理：分段绘制比较复杂，这里根据 dashRanges [ {minX, maxX, dashed: bool} ] 来画
+            // 为了简单且严谨，我们直接按区间画
+            dashRanges.forEach(range => {
+                // 计算该区间与[start.x, end.x]的交集
+                const drawStart = Math.max(start.x, range.minX);
+                const drawEnd = Math.min(end.x, range.maxX);
+                
+                if(drawEnd > drawStart) {
+                    const yS = y1 + slope * (drawStart - x1);
+                    const yE = y1 + slope * (drawEnd - x1);
+                    
+                    ctx.beginPath();
+                    if(range.dashed) {
+                        ctx.setLineDash([8, 8]); ctx.lineWidth = 3; ctx.strokeStyle = themeConfig[currentTheme].rayVirtual;
+                    } else {
+                        ctx.setLineDash([]); ctx.lineWidth = 2.5; ctx.strokeStyle = color;
+                    }
+                    ctx.moveTo(drawStart, yS); ctx.lineTo(drawEnd, yE); ctx.stroke();
+                    ctx.setLineDash([]); // reset
+
+                    // Arrow Logic
+                    if(arrowAt >= drawStart && arrowAt <= drawEnd && !range.dashed) {
+                        const yA = y1 + slope * (arrowAt - x1);
+                        drawArrowHead(arrowAt, yA, Math.atan(slope), color);
+                    }
+                }
+            });
+        }
+
+        function draw() {
+            const { width, height } = canvas;
+            const cx = width / 2, cy = height / 2;
+            const { f, u, pxPerCm, candleH } = state;
+            const colors = themeConfig[currentTheme];
+            
+            ctx.clearRect(0, 0, width, height);
+            ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(width, cy); ctx.strokeStyle = '#D6D3D1'; ctx.lineWidth = 2; ctx.stroke();
+
+            const curvature = 250 / f; 
+            drawJellyLens(cx, cy, 220, curvature, colors);
+            const fPx = f * pxPerCm;
+            drawPoint(cx - fPx, cy, "F"); drawPoint(cx + fPx, cy, "F");
+            drawPoint(cx - 2*fPx, cy, "2F"); drawPoint(cx + 2*fPx, cy, "2F");
+
+            const objX = cx - u * pxPerCm;
+            const objY = cy - candleH;
+            drawKawaiiCandle(objX, cy, candleH, 1, false, colors, true);
+            ctx.fillStyle = '#EA580C'; ctx.font = 'bold 12px Comic Sans MS'; ctx.textAlign = 'center'; ctx.fillText(`u=${u.toFixed(1)}`, objX, cy + 20);
+
+            // 光路绘制核心
+            if (Math.abs(u - f) < 0.1) {
+                // u=f 平行光
+                drawParallel(cx, cy, objX, objY);
+            } else {
+                // 计算两直线方程参数
+                // 1. Red Line (入射点 -> 焦点)
+                const slopeRed = (cy - objY) / fPx;
+                
+                // 2. Green Line (物体 -> 光心)
+                const slopeGreen = (cy - objY) / (cx - objX);
+
+                // 计算交点 (虚像位置)
+                // y - objY = kR * (x - cx)
+                // y - cy   = kG * (x - cx)
+                // kR(x-cx) + objY = kG(x-cx) + cy
+                // (kR - kG)(x-cx) = cy - objY
+                // x - cx = (cy - objY) / (kR - kG)
+                const ix = cx + (cy - objY) / (slopeRed - slopeGreen);
+                const iy = cy + slopeGreen * (ix - cx);
+                
+                // 判断实像还是虚像
+                const isReal = ix > cx;
+
+                // 准备绘制
+                // Red Line: 
+                // Incident part (Solid): objX -> cx (实际上是 -infinity -> cx 都可以看作入射方向，但我们画线段)
+                // 修正：红线入射光单独画（水平线），折射光才用通用函数
+                ctx.strokeStyle = '#FB7185'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(objX, objY); ctx.lineTo(cx, objY); ctx.stroke();
+                drawArrowHead((objX+cx)/2, objY, 0, '#FB7185');
+
+                // Red Refracted:
+                // If real: Solid from cx -> infinity
+                // If virtual: Dashed from -infinity -> cx, Solid from cx -> infinity
+                let redRanges = [];
+                if(isReal) {
+                    redRanges.push({minX: cx, maxX: 100000, dashed: false}); // 实像全实
+                } else {
+                    redRanges.push({minX: -100000, maxX: cx, dashed: true}); // 虚像左侧虚
+                    redRanges.push({minX: cx, maxX: 100000, dashed: false}); // 右侧实
+                }
+                drawClippedLine(cx, objY, slopeRed, redRanges, '#FB7185', cx + 60);
+
+                // Green Line:
+                // If real: Solid from objX -> infinity
+                // If virtual: Dashed -infinity -> objX, Solid objX -> infinity
+                let greenRanges = [];
+                if(isReal) {
+                    greenRanges.push({minX: objX, maxX: 100000, dashed: false});
+                } else {
+                    greenRanges.push({minX: -100000, maxX: objX, dashed: true}); // 虚像到物体是虚线
+                    greenRanges.push({minX: objX, maxX: 100000, dashed: false}); // 物体之后是实线
+                }
+                drawClippedLine(cx, cy, slopeGreen, greenRanges, '#4ADE80', cx + 60);
+                // 补一个入射箭头在物体和光心之间
+                drawArrowHead((objX+cx)/2, (objY+cy)/2, Math.atan(slopeGreen), '#4ADE80');
+
+                // 绘制像 (检查是否在可视范围内)
+                // 像高
+                const imgH = Math.abs(iy - cy);
+                // 限制像的最大显示高度防止卡顿
+                if(Math.abs(ix) < 10000 && imgH < 5000) {
+                     // 只有当像在屏幕附近时才画，否则只画光线
+                     // 计算像距显示
+                     const vVal = (ix - cx) / pxPerCm;
+                     const mVal = imgH / candleH;
+                     const drawH = Math.min(imgH, height * 0.8); // 视觉限制
+                     
+                     // 虚像/实像 绘制
+                     // 只有在合理范围内才画
+                     if(ix > -width*2 && ix < width*2) {
+                         drawKawaiiCandle(ix, cy, drawH, isReal?0.9:0.4, isReal, colors, true);
+                         ctx.fillStyle = isReal ? '#E11D48' : '#D97706'; 
+                         ctx.fillText(`v=${Math.abs(vVal).toFixed(1)}`, ix, cy + (isReal?-10:20));
+                     }
+                }
+            }
+        }
+
+        function drawParallel(cx, cy, objX, objY) {
+            const fPx = state.f * state.pxPerCm; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+            // Red Line
+            ctx.strokeStyle = '#FB7185'; ctx.beginPath(); ctx.moveTo(objX, objY); ctx.lineTo(cx, objY); ctx.stroke();
+            drawArrowHead((objX + cx)/2, objY, 0, '#FB7185');
+            const slope = (cy - objY) / fPx;
+            drawClippedLine(cx, objY, slope, [{minX: cx, maxX: 100000, dashed: false}], '#FB7185', cx + 60);
+
+            // Green Line
+            const slopeG = (cy - objY) / (cx - objX);
+            drawClippedLine(cx, cy, slopeG, [{minX: objX, maxX: 100000, dashed: false}], '#4ADE80', cx + 60);
+            drawArrowHead((objX+cx)/2, (objY+cy)/2, Math.atan(slopeG), '#4ADE80');
+        }
+
+        function drawJellyLens(cx, cy, h, curve, colors) {
+            ctx.save(); ctx.fillStyle = colors.lensFill; ctx.strokeStyle = colors.lensStroke; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(cx, cy - h/2); ctx.quadraticCurveTo(cx + curve, cy, cx, cy + h/2); ctx.quadraticCurveTo(cx - curve, cy, cx, cy - h/2);
+            ctx.fill(); ctx.stroke(); ctx.fillStyle = colors.lensStroke; ctx.font = 'bold 12px Comic Sans MS'; ctx.fillText("O", cx - 4, cy + h/2 + 20); ctx.restore();
+        }
+        function drawPoint(x, y, label) { ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2); ctx.fillStyle = '#F43F5E'; ctx.fill(); ctx.fillStyle = '#9CA3AF'; ctx.font = '10px Arial'; ctx.textAlign = 'center'; ctx.fillText(label, x, y + 16); }
+        function drawArrowHead(x, y, angle, color) { ctx.save(); ctx.translate(x, y); ctx.rotate(angle); ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-10, 4); ctx.lineTo(-10, -4); ctx.closePath(); ctx.fillStyle = color; ctx.fill(); ctx.restore(); }
+        
+        function drawKawaiiCandle(x, y, h, alpha, isInverted, colors, animate) {
+            ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); if (isInverted) ctx.scale(1, -1);
+            const w = h * 0.55, waxH = h * 0.7, flameH = h * 0.3, radius = w * 0.3, topY = -waxH, leftX = -w/2;
+            const defineBodyPath = () => {
+                ctx.beginPath(); ctx.moveTo(leftX, topY + radius); ctx.quadraticCurveTo(leftX, topY, leftX + radius, topY);
+                ctx.lineTo(w/2 - radius, topY); ctx.quadraticCurveTo(w/2, topY, w/2, topY + radius);
+                ctx.lineTo(w/2, -radius); ctx.quadraticCurveTo(w/2, 0, w/2 - radius, 0);
+                ctx.lineTo(leftX + radius, 0); ctx.quadraticCurveTo(leftX, 0, leftX, -radius); ctx.closePath();
+            };
+            defineBodyPath(); ctx.save(); ctx.clip(); ctx.fillStyle = '#FFFFFF'; ctx.fill();
+            ctx.lineWidth = w * 0.35; ctx.strokeStyle = colors.candleStripe; ctx.lineCap = 'round';
+            for(let i = -2; i < 8; i++) { const startY = topY + i * ((waxH+w)/4); ctx.beginPath(); ctx.moveTo(leftX-w, startY); ctx.quadraticCurveTo(leftX+w/1.5, startY+w*1.5, leftX+w*2.5, startY+w*2.5); ctx.stroke(); }
+            ctx.beginPath(); ctx.moveTo(leftX + w*0.15, topY + radius); ctx.lineTo(leftX + w*0.15, -radius); ctx.lineWidth = w * 0.08; ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)'; ctx.lineCap = 'round'; ctx.stroke(); ctx.restore(); 
+            defineBodyPath(); ctx.strokeStyle = colors.candleStroke; ctx.lineWidth = 2; ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, topY); ctx.quadraticCurveTo(0, topY - flameH*0.2, w*0.05, topY - flameH*0.2); ctx.strokeStyle = '#78716C'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+            const flameBaseY = topY - flameH * 0.15, t = Date.now();
+            const sway = animate ? (Math.sin(t/200)*w*0.1 + Math.sin(t/50)*w*0.05) : 0, breathe = animate ? Math.sin(t/150)*flameH*0.05 : 0;
+            const grad = ctx.createRadialGradient(0, flameBaseY - flameH*0.5, 0, 0, flameBaseY - flameH*0.5, flameH);
+            grad.addColorStop(0, '#FEF08A'); grad.addColorStop(0.4, '#FACC15'); grad.addColorStop(1, '#EA580C');
+            ctx.beginPath(); ctx.moveTo(0, flameBaseY); 
+            ctx.bezierCurveTo(-w*0.5 + sway, flameBaseY - flameH*0.4, -w*0.1 + sway*1.5, flameBaseY - flameH*1.1 - breathe, sway*2, flameBaseY - flameH*1.1 - breathe);
+            ctx.bezierCurveTo(w*0.1 + sway*1.5, flameBaseY - flameH*1.1 - breathe, w*0.5 + sway, flameBaseY - flameH*0.4, 0, flameBaseY);
+            ctx.fillStyle = grad; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.stroke(); ctx.restore();
+        }
+
+        function startDrag(e) { stopAnimation(); const rect = canvas.getBoundingClientRect(), x = (e.touches?e.touches[0].clientX:e.clientX)-rect.left, cx = canvas.width/2; if(Math.abs(x - (cx - state.u * state.pxPerCm)) < 60) state.isDragging = true; }
+        function onDrag(e) { if(!state.isDragging) return; e.preventDefault(); const rect = canvas.getBoundingClientRect(), x = (e.touches?e.touches[0].clientX:e.clientX)-rect.left, cx = canvas.width/2; state.u = Math.max(2, Math.min(60, (cx - x) / state.pxPerCm)); updateAllUI(); draw(); }
+        function endDrag() { state.isDragging = false; }
+        function toggleTheme() { document.body.setAttribute('data-theme', currentTheme === 'pink' ? 'blue' : ''); currentTheme = currentTheme === 'pink' ? 'blue' : 'pink'; switchTab(document.querySelector('.tab-btn[style*="background-color"]').id.split('-')[1]); }
+
+        init();
+    </script>
+</body>
+</html>

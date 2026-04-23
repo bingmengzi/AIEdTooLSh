@@ -1,0 +1,98 @@
+## 几何专项指导
+
+你正在处理一道平面几何或立体几何题目。
+
+### 平面几何绘制规范
+
+1. **基础图形绘制**
+   - 三角形：清晰标注三个顶点（A、B、C），特殊角用弧线标注
+   - 圆：标注圆心O、半径r，切线/弦/弧用不同线型区分
+   - 多边形：顶点按顺时针或逆时针统一标记
+
+2. **几何变换可视化**
+   - 平移：用虚线显示原位置，实线显示新位置
+   - 旋转：用弧形箭头表示旋转方向和角度
+   - 对称：用虚线画出对称轴，对称点用相同颜色标记
+
+3. **直角符号绘制**
+```javascript
+// 在点C处绘制直角符号
+function drawRightAngle(ctx, cx, cy, size) {
+    ctx.beginPath();
+    ctx.moveTo(cx + size, cy);
+    ctx.lineTo(cx + size, cy - size);
+    ctx.lineTo(cx, cy - size);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+```
+
+### 可拖拽顶点实现模式
+
+参考勾股定理、将军饮马问题的交互方式：
+
+1. **顶点定义**
+```javascript
+const points = {
+    A: { x: 100, y: 200, r: 12, label: 'A', dragging: false },
+    B: { x: 300, y: 200, r: 12, label: 'B', dragging: false },
+    C: { x: 200, y: 100, r: 12, label: 'C', dragging: false }
+};
+```
+
+2. **拖拽检测**
+```javascript
+function handleMouseDown(e) {
+    const pos = getMousePos(e);
+    for (let key in points) {
+        if (distance(pos, points[key]) < points[key].r + 10) {
+            points[key].dragging = true;
+            break;
+        }
+    }
+}
+```
+
+3. **约束条件**
+   - 可限制点只能在直线上移动
+   - 可限制点在某个范围内
+   - 拖动时实时计算相关几何量
+
+### 几何计算常用函数
+
+```javascript
+// 两点距离
+const distance = (p1, p2) => Math.sqrt((p1.x-p2.x)**2 + (p1.y-p2.y)**2);
+
+// 三点夹角（弧度）
+const angle = (a, b, c) => {
+    const ab = { x: b.x-a.x, y: b.y-a.y };
+    const cb = { x: b.x-c.x, y: b.y-c.y };
+    const dot = ab.x*cb.x + ab.y*cb.y;
+    return Math.acos(dot / (Math.hypot(ab.x,ab.y) * Math.hypot(cb.x,cb.y)));
+};
+
+// 三角形面积（海伦公式）
+const triangleArea = (a, b, c) => {
+    const s = (a + b + c) / 2;
+    return Math.sqrt(s * (s-a) * (s-b) * (s-c));
+};
+```
+
+### 勾股定理类题目参考结构
+
+1. 左侧Canvas绘制：直角三角形 + 三边正方形
+2. 右侧控制面板：
+   - 滑块调节两条直角边长度
+   - 实时显示 a²、b²、c² 的计算
+   - 高亮显示 a² + b² = c² 等式验证
+
+### 将军饮马类题目参考结构
+
+1. 问题特征：求最短路径，涉及对称点
+2. 交互要点：
+   - 可拖动起点/终点/中间点
+   - checkbox切换显示对称点和辅助线
+   - 实时计算当前路径长度 vs 最短路径长度
+   - 找到最优解时给出视觉反馈

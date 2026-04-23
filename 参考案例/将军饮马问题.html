@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>将军饮马 - 几何最短路径探究 (优化版)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background-color: #F0F7F4; /* 护眼浅青绿 */
+            touch-action: none; /* 防止触摸拖动时页面滚动 */
+            overflow: hidden; /* 禁止页面滚动，专注操作 */
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .canvas-container {
+            cursor: crosshair;
+            background-image: 
+                linear-gradient(#E5E7EB 1px, transparent 1px),
+                linear-gradient(90deg, #E5E7EB 1px, transparent 1px);
+            background-size: 20px 20px;
+            background-position: -1px -1px;
+        }
+
+        /* 自定义滑块样式 */
+        .range-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #d3d3d3;
+            outline: none;
+        }
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4285F4;
+            cursor: pointer;
+        }
+
+        /* 选中状态动画 */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(52, 168, 83, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(52, 168, 83, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(52, 168, 83, 0); }
+        }
+        .success-pulse {
+            animation: pulse-ring 1.5s infinite;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col p-4 box-border">
+
+    <!-- 顶部标题栏 -->
+    <header class="flex justify-between items-center mb-4 px-2">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-100 p-2 rounded-lg text-blue-600">
+                <i class="fa-solid fa-horse-head text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800 tracking-wide">将军饮马问题</h1>
+                <p class="text-sm text-gray-500">探究几何中的“最短路径”原理</p>
+            </div>
+        </div>
+        
+        <!-- 状态指示器 -->
+        <div id="statusBadge" class="hidden md:flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full font-bold shadow-sm transition-colors duration-300">
+            <i class="fa-solid fa-person-walking"></i>
+            <span id="statusText">请拖动战马 P 到河边饮水</span>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 flex gap-4 h-full overflow-hidden">
+        
+        <!-- 左侧：交互画布 -->
+        <section class="flex-1 relative glass-card rounded-2xl shadow-lg overflow-hidden border-2 border-white">
+            <div id="canvasWrapper" class="w-full h-full canvas-container relative">
+                <canvas id="geometryCanvas" class="block w-full h-full"></canvas>
+                
+                <!-- 浮动的操作提示，仅在开始时显示 -->
+                <div id="tutorialTip" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black/70 text-white px-6 py-3 rounded-full pointer-events-none transition-opacity duration-500 z-10">
+                    <i class="fa-solid fa-hand-pointer mr-2"></i> 拖动点 P、A 或 B 进行探索
+                </div>
+            </div>
+            
+            <!-- 画布上的图例/标签 -->
+            <div class="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none">
+                <div class="flex items-center gap-2 bg-white/90 px-3 py-1.5 rounded-lg shadow-sm border border-red-100">
+                    <span class="w-3 h-3 rounded-full bg-red-500"></span>
+                    <span class="text-sm font-bold text-gray-700">A 军营</span>
+                </div>
+                <div class="flex items-center gap-2 bg-white/90 px-3 py-1.5 rounded-lg shadow-sm border border-yellow-100">
+                    <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+                    <span class="text-sm font-bold text-gray-700">B 目的地</span>
+                </div>
+                <div class="flex items-center gap-2 bg-white/90 px-3 py-1.5 rounded-lg shadow-sm border border-blue-100">
+                    <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                    <span class="text-sm font-bold text-gray-700">河流 (Line L)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右侧：控制面板与数据 -->
+        <aside class="w-80 flex flex-col gap-4">
+            
+            <!-- 数据卡片 -->
+            <div class="glass-card p-5 rounded-2xl shadow-md bg-white">
+                <h3 class="text-lg font-bold text-gray-700 mb-3 border-l-4 border-blue-500 pl-2">实时数据</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-sm text-gray-500 mb-1">
+                            <span>当前路径 (AP + PB)</span>
+                            <span id="currentDistVal" class="font-mono font-bold text-blue-600 text-lg">0</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                            <div id="distBar" class="bg-blue-500 h-2.5 rounded-full transition-all duration-100" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-sm text-gray-500 mb-1">
+                            <span>最短路径 (AP' + P'B)</span>
+                            <span id="optimalDistVal" class="font-mono font-bold text-green-600 text-lg">0</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                            <div id="optBar" class="bg-green-500 h-2.5 rounded-full transition-all duration-100" style="width: 80%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="successMsg" class="mt-4 hidden p-3 bg-green-100 text-green-700 rounded-lg text-center font-bold text-sm animate-bounce">
+                    <i class="fa-solid fa-check-circle"></i> 太棒了！找到最短路径！
+                </div>
+            </div>
+
+            <!-- 控制卡片 -->
+            <div class="glass-card p-5 rounded-2xl shadow-md bg-white flex-1 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-700 mb-4 border-l-4 border-yellow-500 pl-2">辅助工具</h3>
+                    
+                    <div class="space-y-3">
+                        <label class="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 cursor-pointer transition">
+                            <span class="text-gray-700 font-medium"><i class="fa-solid fa-clone text-purple-500 mr-2"></i>显示对称点 A'</span>
+                            <input type="checkbox" id="toggleReflection" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500">
+                        </label>
+
+                        <label class="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 cursor-pointer transition">
+                            <span class="text-gray-700 font-medium"><i class="fa-solid fa-route text-gray-400 mr-2"></i>显示连线 A'B</span>
+                            <input type="checkbox" id="toggleAuxLine" class="w-5 h-5 text-blue-600 rounded focus:ring-blue-500">
+                        </label>
+                    </div>
+
+                    <!-- 新增说明 -->
+                    <div class="mt-4 p-3 bg-purple-50 text-purple-700 rounded-lg text-xs">
+                        <i class="fa-solid fa-lightbulb mr-1"></i> 勾选上方选项即可看到对称点 A' 及其辅助线。
+                    </div>
+                </div>
+
+                <div class="mt-4 space-y-3">
+                    <button id="btnAutoSolve" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md transition transform active:scale-95 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> 自动寻找最优解
+                    </button>
+                    <button id="btnReset" class="w-full py-3 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-xl font-bold transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> 重置位置
+                    </button>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        // --- 变量定义 ---
+        const canvas = document.getElementById('geometryCanvas');
+        const ctx = canvas.getContext('2d');
+        const wrapper = document.getElementById('canvasWrapper');
+        
+        // 颜色定义 (Google Colors)
+        const COLOR_A = '#EA4335'; // Red
+        const COLOR_B = '#FBBC05'; // Yellow
+        const COLOR_P = '#4285F4'; // Blue (Default)
+        const COLOR_P_OPT = '#34A853'; // Green (Optimal)
+        const COLOR_RIVER = '#4285F4';
+        const COLOR_REFLECT = '#AA00FF'; // Purple for reflection point
+
+        // 状态变量
+        let width, height;
+        let riverY; // 河流的Y坐标
+        let points = {
+            A: { x: 0, y: 0, r: 18, label: 'A', dragging: false },
+            B: { x: 0, y: 0, r: 18, label: 'B', dragging: false },
+            P: { x: 0, y: 0, r: 20, label: 'P', dragging: false }
+        };
+        
+        let showReflection = false;
+        let showAuxLine = false;
+        let isOptimal = false;
+        let animationFrame;
+
+        // --- 初始化 ---
+        function init() {
+            resize();
+            resetPositions();
+            window.addEventListener('resize', resize);
+            
+            // 交互事件
+            canvas.addEventListener('mousedown', onPointerDown);
+            canvas.addEventListener('mousemove', onPointerMove);
+            canvas.addEventListener('mouseup', onPointerUp);
+            canvas.addEventListener('touchstart', onPointerDown, {passive: false});
+            canvas.addEventListener('touchmove', onPointerMove, {passive: false});
+            canvas.addEventListener('touchend', onPointerUp);
+
+            // 按钮事件
+            document.getElementById('toggleReflection').addEventListener('change', (e) => { showReflection = e.target.checked; draw(); });
+            document.getElementById('toggleAuxLine').addEventListener('change', (e) => { showAuxLine = e.target.checked; draw(); });
+            document.getElementById('btnAutoSolve').addEventListener('click', animateToOptimal);
+            document.getElementById('btnReset').addEventListener('click', resetPositions);
+
+            // 初始绘制
+            requestAnimationFrame(draw);
+            
+            // 3秒后隐藏提示
+            setTimeout(() => {
+                document.getElementById('tutorialTip').style.opacity = '0';
+            }, 3000);
+        }
+
+        function resize() {
+            const rect = wrapper.getBoundingClientRect();
+            width = rect.width;
+            height = rect.height;
+            canvas.width = width * 2; // Retina屏支持
+            canvas.height = height * 2;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            ctx.scale(2, 2);
+            
+            // 如果是第一次或者resize导致位置错乱，重置河流位置（放到画布中间）
+            riverY = height * 0.5;
+            draw();
+        }
+
+        function resetPositions() {
+            // 默认位置
+            points.A.x = width * 0.2;
+            points.A.y = height * 0.3;
+            points.B.x = width * 0.8;
+            points.B.y = height * 0.4;
+            points.P.x = width * 0.5;
+            points.P.y = riverY;
+            
+            isOptimal = false;
+            updateUI();
+            draw();
+        }
+
+        // --- 核心绘图逻辑 ---
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. 绘制河流 (背景)
+            ctx.fillStyle = '#CDE1F8'; // 浅河水
+            ctx.fillRect(0, riverY, width, height - riverY);
+            ctx.beginPath();
+            ctx.moveTo(0, riverY);
+            ctx.lineTo(width, riverY);
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = COLOR_RIVER;
+            ctx.stroke();
+            
+            // 绘制波浪纹装饰
+            ctx.save();
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx.lineWidth = 2;
+            for(let i=0; i<width; i+=40) {
+                ctx.moveTo(i, riverY + 15);
+                ctx.quadraticCurveTo(i+10, riverY+10, i+20, riverY+15);
+                ctx.quadraticCurveTo(i+30, riverY+20, i+40, riverY+15);
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            // 计算镜像点 A'
+            const reflectA = { x: points.A.x, y: riverY + (riverY - points.A.y) };
+
+            // 2. 绘制辅助线 (虚线)
+            if (showReflection) {
+                // 绘制 A 到 A' 的虚线
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = COLOR_REFLECT;
+                ctx.lineWidth = 3; // 加粗
+                ctx.beginPath();
+                ctx.moveTo(points.A.x, points.A.y);
+                ctx.lineTo(reflectA.x, reflectA.y);
+                ctx.stroke();
+
+                // 绘制 A' 点
+                ctx.setLineDash([]);
+                drawPoint(reflectA.x, reflectA.y, 12, COLOR_REFLECT, "A'");
+                
+                // 绘制垂直符号
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(points.A.x - 10, riverY - 10, 10, 10);
+            }
+
+            if (showAuxLine && showReflection) {
+                // 绘制 A' 到 B 的连线 (这是几何上的直线)
+                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = '#EA4335'; // 提示色
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(reflectA.x, reflectA.y);
+                ctx.lineTo(points.B.x, points.B.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            // 3. 绘制实际路径 AP 和 PB
+            ctx.beginPath();
+            ctx.moveTo(points.A.x, points.A.y);
+            ctx.lineTo(points.P.x, points.P.y);
+            ctx.lineTo(points.B.x, points.B.y);
+            
+            // 判断是否接近最优解 (容差 5像素)
+            const optimalX = getOptimalX(reflectA, points.B);
+            const distDiff = Math.abs(points.P.x - optimalX);
+            isOptimal = distDiff < 5;
+
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = isOptimal ? 6 : 4;
+            ctx.strokeStyle = isOptimal ? COLOR_P_OPT : (distDiff < 30 ? '#FBBC05' : '#5f6368'); // 接近变黄，对准变绿
+            ctx.stroke();
+
+            // 4. 绘制点 A, B, P
+            drawPoint(points.A.x, points.A.y, points.A.r, COLOR_A, points.A.label);
+            drawPoint(points.B.x, points.B.y, points.B.r, COLOR_B, points.B.label);
+            drawPoint(points.P.x, points.P.y, points.P.r, isOptimal ? COLOR_P_OPT : COLOR_P, points.P.label, true); // P点加光环
+
+            // 更新数据面板
+            updateUI(reflectA, optimalX);
+        }
+
+        function drawPoint(x, y, r, color, label, isHollow = false) {
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            if (isHollow) {
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.fillStyle = 'white';
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = color;
+                ctx.fill();
+            }
+            
+            if (label) {
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(label, x, y);
+            }
+        }
+
+        // --- 几何计算 ---
+        function getDistance(p1, p2) {
+            return Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
+        }
+
+        function getOptimalX(reflectA, B) {
+            // 利用相似三角形或直线方程求交点
+            // A' = (reflectA.x, reflectA.y), B = (B.x, B.y)
+            // 河流 Y = riverY
+            // 直线斜率 k = (By - A'y) / (Bx - A'x)
+            // X - A'x = (Y - A'y) / k
+            if (Math.abs(B.x - reflectA.x) < 0.1) return reflectA.x; // 垂直情况
+            
+            const k = (B.y - reflectA.y) / (B.x - reflectA.x);
+            const x = (riverY - reflectA.y) / k + reflectA.x;
+            return x;
+        }
+
+        // --- UI 更新 ---
+        function updateUI(reflectA, optimalX) {
+            if (!reflectA) reflectA = { x: points.A.x, y: riverY + (riverY - points.A.y) };
+            if (!optimalX) optimalX = getOptimalX(reflectA, points.B);
+
+            // 实际距离
+            const distAP = getDistance(points.A, points.P);
+            const distPB = getDistance(points.P, points.B);
+            const totalDist = Math.round(distAP + distPB);
+
+            // 最优距离
+            const optimalP = {x: optimalX, y: riverY};
+            const minTotalDist = Math.round(getDistance(points.A, optimalP) + getDistance(optimalP, points.B));
+
+            // 更新DOM
+            const currentDistEl = document.getElementById('currentDistVal');
+            const optimalDistEl = document.getElementById('optimalDistVal');
+            const distBar = document.getElementById('distBar');
+            const statusBadge = document.getElementById('statusBadge');
+            const statusText = document.getElementById('statusText');
+            const successMsg = document.getElementById('successMsg');
+
+            currentDistEl.innerText = totalDist;
+            optimalDistEl.innerText = minTotalDist;
+
+            // 进度条比例 (最大假设为宽度的1.5倍作为基准)
+            const maxRef = width * 1.5; 
+            distBar.style.width = Math.min((totalDist / maxRef) * 100, 100) + '%';
+            
+            // 颜色反馈
+            if (isOptimal) {
+                statusBadge.className = "hidden md:flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-full font-bold shadow-sm";
+                statusText.innerText = "已找到最短路径！";
+                successMsg.classList.remove('hidden');
+                distBar.className = "bg-green-500 h-2.5 rounded-full transition-all duration-100";
+            } else {
+                statusBadge.className = "hidden md:flex items-center gap-2 px-4 py-2 bg-yellow-100 text-yellow-700 rounded-full font-bold shadow-sm";
+                statusText.innerText = "拖动 P 点使路径最短";
+                successMsg.classList.add('hidden');
+                distBar.className = "bg-blue-500 h-2.5 rounded-full transition-all duration-100";
+            }
+        }
+
+        // --- 交互处理 ---
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function onPointerDown(e) {
+            e.preventDefault();
+            const pos = getPointerPos(e);
+            
+            // 检查点击了哪个点 (按 P, B, A 顺序检测，优先拖动 P)
+            if (getDistance(pos, points.P) < 30) {
+                points.P.dragging = true;
+            } else if (getDistance(pos, points.B) < 30) {
+                points.B.dragging = true;
+            } else if (getDistance(pos, points.A) < 30) {
+                points.A.dragging = true;
+            }
+        }
+
+        function onPointerMove(e) {
+            e.preventDefault();
+            const pos = getPointerPos(e);
+            let needsDraw = false;
+
+            if (points.P.dragging) {
+                // P 限制在河线上
+                points.P.x = Math.max(0, Math.min(width, pos.x));
+                // y 不变
+                needsDraw = true;
+            } else if (points.A.dragging) {
+                // A 限制在河上方
+                points.A.x = Math.max(0, Math.min(width, pos.x));
+                points.A.y = Math.max(0, Math.min(riverY - 20, pos.y));
+                needsDraw = true;
+            } else if (points.B.dragging) {
+                // B 限制在河上方
+                points.B.x = Math.max(0, Math.min(width, pos.x));
+                points.B.y = Math.max(0, Math.min(riverY - 20, pos.y));
+                needsDraw = true;
+            } else {
+                // Hover 效果 (改变鼠标指针)
+                if (getDistance(pos, points.P) < 30 || getDistance(pos, points.A) < 30 || getDistance(pos, points.B) < 30) {
+                    canvas.style.cursor = 'move';
+                } else {
+                    canvas.style.cursor = 'default';
+                }
+            }
+
+            if (needsDraw) draw();
+        }
+
+        function onPointerUp(e) {
+            points.A.dragging = false;
+            points.B.dragging = false;
+            points.P.dragging = false;
+        }
+
+        // --- 动画逻辑 ---
+        function animateToOptimal() {
+            // 计算最优位置
+            const reflectA = { x: points.A.x, y: riverY + (riverY - points.A.y) };
+            const targetX = getOptimalX(reflectA, points.B);
+            
+            const startX = points.P.x;
+            const distance = targetX - startX;
+            const duration = 600; // ms
+            const startTime = performance.now();
+
+            function step(currentTime) {
+                const elapsed = currentTime - startTime;
+                if (elapsed < duration) {
+                    // EaseOutCubic 缓动
+                    const progress = 1 - Math.pow(1 - elapsed / duration, 3);
+                    points.P.x = startX + distance * progress;
+                    draw();
+                    animationFrame = requestAnimationFrame(step);
+                } else {
+                    points.P.x = targetX;
+                    showReflection = true; // 自动开启辅助线，帮助理解
+                    showAuxLine = true;
+                    document.getElementById('toggleReflection').checked = true;
+                    document.getElementById('toggleAuxLine').checked = true;
+                    draw();
+                }
+            }
+            cancelAnimationFrame(animationFrame);
+            animationFrame = requestAnimationFrame(step);
+        }
+
+        // 启动
+        init();
+
+    </script>
+</body>
+</html>

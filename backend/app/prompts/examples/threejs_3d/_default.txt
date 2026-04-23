@@ -1,0 +1,106 @@
+## 参考代码模式 - Three.js 3D 交互场景
+
+### 1. 基础场景设置
+```javascript
+let scene, camera, renderer, controls;
+
+function initScene() {
+    // 场景
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xF5F7FB);
+    
+    // 相机
+    camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(5, 5, 5);
+    camera.lookAt(0, 0, 0);
+    
+    // 渲染器
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+    
+    // 轨道控制器
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+}
+```
+
+### 2. 灯光设置
+```javascript
+function setupLights() {
+    // 环境光
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambient);
+    
+    // 主光源
+    const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+    directional.position.set(10, 10, 10);
+    directional.castShadow = true;
+    scene.add(directional);
+}
+```
+
+### 3. 网格辅助线
+```javascript
+function addHelpers() {
+    // 网格
+    const grid = new THREE.GridHelper(10, 10, 0xcbd5e1, 0xf0f0f0);
+    scene.add(grid);
+    
+    // 坐标轴
+    const axes = new THREE.AxesHelper(5);
+    scene.add(axes);
+}
+```
+
+### 4. 几何体创建
+```javascript
+function createGeometry() {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x4285F4,
+        transparent: true,
+        opacity: 0.8
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+}
+```
+
+### 5. 动画循环
+```javascript
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+}
+```
+
+### 6. 窗口自适应
+```javascript
+window.addEventListener('resize', () => {
+    camera.aspect = container.clientWidth / container.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(container.clientWidth, container.clientHeight);
+});
+```
+
+### 7. 外部依赖
+```html
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+```
+
+### 8. 初始化流程
+```javascript
+function init() {
+    initScene();
+    setupLights();
+    addHelpers();
+    createGeometry();
+    animate();
+}
+init();
+```

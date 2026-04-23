@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>三角函数互动实验室</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 字体设置 */
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: #F5F7FB; /* 护眼背景 */
+            overflow-x: hidden;
+            touch-action: pan-y;
+        }
+
+        /* 自定义滑块样式，使其更适合触摸 */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;  /* 添加标准属性 */
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #4285F4;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #E2E8F0;
+            border-radius: 3px;
+        }
+        
+        /* 选中状态的Checkbox美化 */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #4285F4;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4285F4;
+        }
+
+        /* 禁止Canvas上的默认触摸行为，防止滚动 */
+        canvas {
+            touch-action: none;
+        }
+    </style>
+</head>
+<body class="text-slate-700 h-screen flex flex-col">
+
+    <!-- 顶部标题栏 -->
+    <header class="bg-white shadow-sm py-3 px-6 flex items-center justify-between shrink-0 z-10">
+        <div class="flex items-center gap-4">
+            <img src="https://api.zcat.cn/udata/715755/png/f52af147d9c9e8ec354a2c64056a0e2c.png" alt="Logo" class="w-10 h-10 rounded-lg shadow-sm object-cover">
+            <div>
+                <h1 class="text-xl font-bold text-slate-800">三角函数互动实验室</h1>
+                <p class="text-xs text-slate-500 hidden sm:block">拖动圆上的点，观察正弦、余弦与正切的变化</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="resetApp()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg font-medium transition active:scale-95">
+                <i class="fa-solid fa-rotate-right mr-1"></i> 重置
+            </button>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 flex flex-col lg:flex-row gap-4 p-4 lg:p-6 overflow-hidden">
+        
+        <!-- 左侧：单位圆交互区 (正方形布局) -->
+        <section class="flex-1 flex flex-col gap-4 min-h-[400px]">
+            <div class="bg-white rounded-2xl shadow-lg flex-1 relative overflow-hidden flex items-center justify-center p-4 border border-slate-100">
+                <div class="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 text-sm font-bold text-slate-600">
+                    <i class="fa-regular fa-circle-dot mr-1"></i> 单位圆视图
+                </div>
+                <canvas id="unitCircleCanvas" class="w-full h-full max-w-[500px] max-h-[500px] cursor-pointer"></canvas>
+                
+                <!-- 角度指示浮窗 -->
+                <div class="absolute bottom-4 right-4 bg-white/95 backdrop-blur shadow-md rounded-xl p-3 border-l-4 border-yellow-400 min-w-[120px]">
+                    <div class="text-xs text-slate-500 mb-1">当前角度 (θ)</div>
+                    <div class="text-2xl font-bold text-slate-800" id="angleDisplay">0°</div>
+                    <div class="text-sm text-slate-400" id="radianDisplay">0π</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右侧：函数图像与数据面板 -->
+        <section class="flex-1 flex flex-col gap-4">
+            
+            <!-- 函数波形图 -->
+            <div class="bg-white rounded-2xl shadow-lg h-1/2 min-h-[250px] relative p-4 flex flex-col border border-slate-100">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="bg-slate-100 px-3 py-1 rounded-lg text-sm font-bold text-slate-600">
+                        <i class="fa-solid fa-wave-square mr-1"></i> 函数展开图
+                    </div>
+                </div>
+                <div class="flex-1 relative w-full">
+                     <canvas id="waveCanvas" class="w-full h-full block"></canvas>
+                </div>
+            </div>
+
+            <!-- 数据数值面板 -->
+            <div class="bg-white rounded-2xl shadow-lg flex-1 p-5 border border-slate-100 flex flex-col">
+                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center">
+                    <i class="fa-solid fa-calculator mr-2 text-blue-500"></i> 实时数值
+                </h3>
+                
+                <div class="grid grid-cols-3 gap-4 mb-6">
+                    <!-- Sin 卡片 -->
+                    <div id="card-sin" class="bg-red-50 rounded-xl p-3 border border-red-100 text-center transition-all">
+                        <div class="text-red-500 font-bold text-sm mb-1">SIN θ</div>
+                        <div class="text-2xl font-mono font-bold text-slate-800" id="val-sin">0.00</div>
+                        <div class="text-xs text-red-400 mt-1">对边 / 斜边</div>
+                    </div>
+                    <!-- Cos 卡片 -->
+                    <div id="card-cos" class="bg-blue-50 rounded-xl p-3 border border-blue-100 text-center transition-all">
+                        <div class="text-blue-500 font-bold text-sm mb-1">COS θ</div>
+                        <div class="text-2xl font-mono font-bold text-slate-800" id="val-cos">1.00</div>
+                        <div class="text-xs text-blue-400 mt-1">邻边 / 斜边</div>
+                    </div>
+                    <!-- Tan 卡片 -->
+                    <div id="card-tan" class="bg-green-50 rounded-xl p-3 border border-green-100 text-center transition-all">
+                        <div class="text-green-600 font-bold text-sm mb-1">TAN θ</div>
+                        <div class="text-2xl font-mono font-bold text-slate-800" id="val-tan">0.00</div>
+                        <div class="text-xs text-green-500 mt-1">对边 / 邻边</div>
+                    </div>
+                </div>
+
+                <!-- 控制区 -->
+                <div class="mt-auto bg-slate-50 rounded-xl p-4 border border-slate-200">
+                    <div class="flex flex-wrap gap-4 items-center justify-between">
+                        
+                        <!-- 自动演示开关 -->
+                        <div class="flex items-center gap-3">
+                            <button id="playBtn" class="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-lg transition active:scale-90">
+                                <i class="fa-solid fa-play ml-1"></i>
+                            </button>
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-slate-700">自动演示</span>
+                                <span class="text-xs text-slate-400">点击播放动画</span>
+                            </div>
+                        </div>
+
+                        <!-- 选项开关 -->
+                        <div class="flex gap-3">
+                            <label class="flex items-center space-x-2 cursor-pointer select-none bg-white px-3 py-2 rounded-lg border shadow-sm">
+                                <input type="checkbox" checked onchange="toggleFunc('sin')" class="accent-red-500 w-5 h-5">
+                                <span class="text-sm font-bold text-red-500">Sin</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer select-none bg-white px-3 py-2 rounded-lg border shadow-sm">
+                                <input type="checkbox" checked onchange="toggleFunc('cos')" class="accent-blue-500 w-5 h-5">
+                                <span class="text-sm font-bold text-blue-500">Cos</span>
+                            </label>
+                            <label class="flex items-center space-x-2 cursor-pointer select-none bg-white px-3 py-2 rounded-lg border shadow-sm">
+                                <input type="checkbox" checked onchange="toggleFunc('tan')" class="accent-green-600 w-5 h-5">
+                                <span class="text-sm font-bold text-green-600">Tan</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- 1. 初始化配置与状态 ---
+        const colors = {
+            sin: '#EA4335', // Red
+            cos: '#4285F4', // Blue
+            tan: '#34A853', // Green
+            circle: '#94A3B8', // Slate 400
+            axis: '#CBD5E1', // Slate 300
+            text: '#64748B', // Slate 500
+            highlight: '#FBBC05' // Yellow
+        };
+
+        const state = {
+            angle: 0, // 弧度 0 ~ 2PI
+            isDragging: false,
+            isPlaying: false,
+            speed: 0.015,
+            showSin: true,
+            showCos: true,
+            showTan: true,
+            radius: 150 // 基础半径，会根据屏幕自适应
+        };
+
+        // DOM 元素
+        const circleCanvas = document.getElementById('unitCircleCanvas');
+        const waveCanvas = document.getElementById('waveCanvas');
+        const ctxCircle = circleCanvas.getContext('2d');
+        const ctxWave = waveCanvas.getContext('2d');
+        
+        const uiElements = {
+            angleDeg: document.getElementById('angleDisplay'),
+            angleRad: document.getElementById('radianDisplay'),
+            valSin: document.getElementById('val-sin'),
+            valCos: document.getElementById('val-cos'),
+            valTan: document.getElementById('val-tan'),
+            playBtn: document.getElementById('playBtn'),
+            cardSin: document.getElementById('card-sin'),
+            cardCos: document.getElementById('card-cos'),
+            cardTan: document.getElementById('card-tan')
+        };
+
+        // --- 2. 核心逻辑 ---
+
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // 交互事件绑定
+            setupInteractions();
+            
+            // 启动循环
+            requestAnimationFrame(animate);
+        }
+
+        function resizeCanvas() {
+            // 处理高DPI屏幕
+            const dpr = window.devicePixelRatio || 1;
+            
+            // 设置单位圆 Canvas
+            const circleRect = circleCanvas.parentElement.getBoundingClientRect();
+            circleCanvas.width = circleRect.width * dpr;
+            circleCanvas.height = circleRect.height * dpr;
+            ctxCircle.scale(dpr, dpr);
+            
+            // 响应式调整半径
+            state.radius = Math.min(circleRect.width, circleRect.height) / 2 * 0.75;
+
+            // 设置波形图 Canvas
+            const waveRect = waveCanvas.parentElement.getBoundingClientRect();
+            waveCanvas.width = waveRect.width * dpr;
+            waveCanvas.height = waveRect.height * dpr;
+            ctxWave.scale(dpr, dpr);
+        }
+
+        function setupInteractions() {
+            // 鼠标/触摸处理逻辑
+            const handleInput = (clientX, clientY) => {
+                const rect = circleCanvas.getBoundingClientRect();
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const x = clientX - rect.left - centerX;
+                const y = clientY - rect.top - centerY;
+                
+                // 计算角度 Math.atan2(y, x) 返回 -PI 到 PI
+                let newAngle = Math.atan2(-y, x); // 注意 Y 轴 Canvas 是向下的，所以取反适应数学坐标
+                if (newAngle < 0) newAngle += Math.PI * 2;
+                
+                state.angle = newAngle;
+                state.isPlaying = false; // 用户交互时停止自动播放
+                updatePlayButtonIcon();
+            };
+
+            const startDrag = (e) => {
+                state.isDragging = true;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                handleInput(clientX, clientY);
+            };
+
+            const moveDrag = (e) => {
+                if (!state.isDragging) return;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                handleInput(clientX, clientY);
+            };
+
+            const endDrag = () => {
+                state.isDragging = false;
+            };
+
+            // Circle Canvas Events
+            circleCanvas.addEventListener('mousedown', startDrag);
+            circleCanvas.addEventListener('touchstart', startDrag, {passive: false}); // passive: false 允许 preventDefault
+
+            window.addEventListener('mousemove', moveDrag);
+            window.addEventListener('touchmove', (e) => {
+                if(state.isDragging) e.preventDefault(); // 拖动时防止屏幕滚动
+                moveDrag(e);
+            }, {passive: false});
+
+            window.addEventListener('mouseup', endDrag);
+            window.addEventListener('touchend', endDrag);
+
+            // 播放按钮
+            uiElements.playBtn.addEventListener('click', () => {
+                state.isPlaying = !state.isPlaying;
+                updatePlayButtonIcon();
+            });
+        }
+
+        function updatePlayButtonIcon() {
+            const icon = uiElements.playBtn.querySelector('i');
+            if (state.isPlaying) {
+                icon.className = 'fa-solid fa-pause ml-0'; // 暂停图标居中
+                uiElements.playBtn.classList.replace('bg-blue-600', 'bg-yellow-500');
+                uiElements.playBtn.classList.replace('hover:bg-blue-700', 'hover:bg-yellow-600');
+            } else {
+                icon.className = 'fa-solid fa-play ml-1';
+                uiElements.playBtn.classList.replace('bg-yellow-500', 'bg-blue-600');
+                uiElements.playBtn.classList.replace('hover:bg-yellow-600', 'hover:bg-blue-700');
+            }
+        }
+
+        function toggleFunc(func) {
+            if (func === 'sin') {
+                state.showSin = !state.showSin;
+                uiElements.cardSin.style.opacity = state.showSin ? '1' : '0.3';
+            }
+            if (func === 'cos') {
+                state.showCos = !state.showCos;
+                uiElements.cardCos.style.opacity = state.showCos ? '1' : '0.3';
+            }
+            if (func === 'tan') {
+                state.showTan = !state.showTan;
+                uiElements.cardTan.style.opacity = state.showTan ? '1' : '0.3';
+            }
+        }
+        
+        // 全局暴露给HTML按钮调用
+        window.toggleFunc = toggleFunc;
+        window.resetApp = () => {
+            state.angle = 0;
+            state.isPlaying = false;
+            updatePlayButtonIcon();
+        }
+
+        // --- 3. 渲染循环 ---
+
+        function animate() {
+            if (state.isPlaying) {
+                state.angle = (state.angle + state.speed) % (Math.PI * 2);
+            }
+
+            drawUnitCircle();
+            drawWaveGraph();
+            updateUI();
+
+            requestAnimationFrame(animate);
+        }
+
+        // --- 4. 绘图逻辑：单位圆 ---
+        function drawUnitCircle() {
+            const width = circleCanvas.parentElement.offsetWidth; // 使用CSS像素尺寸
+            const height = circleCanvas.parentElement.offsetHeight;
+            const cx = width / 2;
+            const cy = height / 2;
+            const r = state.radius;
+
+            // 清空
+            ctxCircle.clearRect(0, 0, width, height);
+
+            // 绘制坐标轴
+            ctxCircle.beginPath();
+            ctxCircle.strokeStyle = colors.axis;
+            ctxCircle.lineWidth = 2;
+            ctxCircle.moveTo(cx - width/2 + 20, cy);
+            ctxCircle.lineTo(cx + width/2 - 20, cy); // X轴
+            ctxCircle.moveTo(cx, cy - height/2 + 20);
+            ctxCircle.lineTo(cx, cy + height/2 - 20); // Y轴
+            ctxCircle.stroke();
+
+            // 绘制单位圆
+            ctxCircle.beginPath();
+            ctxCircle.strokeStyle = colors.circle;
+            ctxCircle.lineWidth = 3;
+            ctxCircle.arc(cx, cy, r, 0, Math.PI * 2);
+            ctxCircle.stroke();
+
+            // 计算点坐标 (注意 canvas Y 轴向下)
+            // 数学坐标 y = sin(theta), canvas y = -sin(theta)
+            const mathX = Math.cos(state.angle);
+            const mathY = Math.sin(state.angle);
+            
+            const px = cx + mathX * r;
+            const py = cy - mathY * r; // 向上为负
+
+            // 绘制扇形角度填充
+            ctxCircle.beginPath();
+            ctxCircle.fillStyle = 'rgba(251, 188, 5, 0.2)'; // 黄色透明
+            ctxCircle.moveTo(cx, cy);
+            ctxCircle.arc(cx, cy, r * 0.2, 0, -state.angle, true); // 逆时针画
+            ctxCircle.fill();
+
+            // 1. 绘制 Cos 线 (X轴投影) - 蓝色
+            if (state.showCos) {
+                ctxCircle.beginPath();
+                ctxCircle.strokeStyle = colors.cos;
+                ctxCircle.lineWidth = 4;
+                ctxCircle.moveTo(cx, cy);
+                ctxCircle.lineTo(px, cy);
+                ctxCircle.stroke();
+
+                // 虚线辅助
+                ctxCircle.beginPath();
+                ctxCircle.setLineDash([5, 5]);
+                ctxCircle.strokeStyle = colors.cos;
+                ctxCircle.lineWidth = 1;
+                ctxCircle.moveTo(px, cy);
+                ctxCircle.lineTo(px, py);
+                ctxCircle.stroke();
+                ctxCircle.setLineDash([]);
+            }
+
+            // 2. 绘制 Sin 线 (Y轴投影) - 红色
+            if (state.showSin) {
+                ctxCircle.beginPath();
+                ctxCircle.strokeStyle = colors.sin;
+                ctxCircle.lineWidth = 4;
+                ctxCircle.moveTo(px, cy); // 从X轴点开始画
+                ctxCircle.lineTo(px, py); // 到圆上点
+                ctxCircle.stroke();
+
+                // 虚线辅助到Y轴
+                ctxCircle.beginPath();
+                ctxCircle.setLineDash([5, 5]);
+                ctxCircle.strokeStyle = colors.sin;
+                ctxCircle.lineWidth = 1;
+                ctxCircle.moveTo(px, py);
+                ctxCircle.lineTo(cx, py);
+                ctxCircle.stroke();
+                ctxCircle.setLineDash([]);
+            }
+
+            // 3. 绘制 Tan 线 (切线) - 绿色
+            if (state.showTan) {
+                // Tan线画在 x=r 处 (右侧切线)
+                // 只有当 cos > 0 (第1,4象限) 画在右边，cos < 0 (2,3象限) 画在左边 
+                // 或者为了简单教学，通常画在 x=1 处，延伸射线
+                
+                // 教学通用画法：
+                // 延长半径直到碰到 x = 1 (或 x = -1)
+                
+                let tanX, tanY;
+                const safeCos = Math.abs(mathX) < 0.001 ? 0.001 : mathX; // 防止除0
+                
+                // 为了视觉一致性，始终画在圆的右侧切线 x=r 处，并延长半径线
+                // 此时 tan值 = y高度
+                // 真正的数学定义：tan是切线长度。
+                // 交互设计：在圆的右侧(x=r)画一条垂直线。从原点引射线穿过(px,py)交于该垂直线。
+                
+                const tanDist = Math.tan(state.angle);
+                // 限制绘制范围防止溢出太远
+                if (Math.abs(tanDist) < 10) { 
+                    const tx = cx + r; // 切线在右侧
+                    const ty = cy - tanDist * r; 
+
+                    // 绘制切线 (从 x轴 到 交点)
+                    ctxCircle.beginPath();
+                    ctxCircle.strokeStyle = colors.tan;
+                    ctxCircle.lineWidth = 4;
+                    ctxCircle.moveTo(tx, cy);
+                    ctxCircle.lineTo(tx, ty);
+                    ctxCircle.stroke();
+                    
+                    // 绘制延长线 (虚线，从原点穿过圆点到切线点)
+                    // 如果角度在 90-270度，需要反向延长
+                    if (mathX < 0) {
+                         // 不绘制太复杂的反向延长，保持界面清洁，只在右侧1,4象限显示清晰
+                         // 或者做全象限适配：
+                         // 如果在左侧，切线画在左边 x = -r
+                    } else {
+                         ctxCircle.beginPath();
+                         ctxCircle.strokeStyle = '#94a3b8';
+                         ctxCircle.lineWidth = 1;
+                         ctxCircle.setLineDash([2, 4]);
+                         ctxCircle.moveTo(cx, cy); // 原点
+                         ctxCircle.lineTo(tx, ty); // 切线点
+                         ctxCircle.stroke();
+                         ctxCircle.setLineDash([]);
+                    }
+                }
+            }
+
+            // 绘制半径线
+            ctxCircle.beginPath();
+            ctxCircle.strokeStyle = '#64748B';
+            ctxCircle.lineWidth = 2;
+            ctxCircle.moveTo(cx, cy);
+            ctxCircle.lineTo(px, py);
+            ctxCircle.stroke();
+
+            // 绘制圆点
+            ctxCircle.beginPath();
+            ctxCircle.fillStyle = colors.highlight;
+            ctxCircle.arc(px, py, 8, 0, Math.PI*2);
+            ctxCircle.fill();
+            ctxCircle.strokeStyle = '#fff';
+            ctxCircle.lineWidth = 2;
+            ctxCircle.stroke();
+        }
+
+        // --- 5. 绘图逻辑：波形图 ---
+        function drawWaveGraph() {
+            const width = waveCanvas.parentElement.offsetWidth;
+            const height = waveCanvas.parentElement.offsetHeight;
+            const midY = height / 2;
+            
+            // X轴映射：显示 0 到 4PI (两个周期)
+            // padding left 40px
+            const startX = 40;
+            const graphWidth = width - 60;
+            const maxAngle = Math.PI * 4; 
+            const scaleX = graphWidth / maxAngle;
+            const scaleY = state.radius * 0.6; // 稍微缩小一点适应高度
+
+            // 清空
+            ctxWave.clearRect(0, 0, width, height);
+
+            // 绘制坐标轴
+            ctxWave.strokeStyle = colors.axis;
+            ctxWave.lineWidth = 2;
+            ctxWave.beginPath();
+            // X轴
+            ctxWave.moveTo(startX, midY);
+            ctxWave.lineTo(startX + graphWidth, midY);
+            // Y轴
+            ctxWave.moveTo(startX, 10);
+            ctxWave.lineTo(startX, height - 10);
+            ctxWave.stroke();
+            
+            // 绘制刻度
+            ctxWave.font = "12px Arial";
+            ctxWave.fillStyle = colors.text;
+            const labels = [
+                { val: Math.PI, text: "π" },
+                { val: 2*Math.PI, text: "2π" },
+                { val: 3*Math.PI, text: "3π" },
+                { val: 4*Math.PI, text: "4π" }
+            ];
+            labels.forEach(l => {
+                const x = startX + l.val * scaleX;
+                ctxWave.beginPath();
+                ctxWave.moveTo(x, midY - 5);
+                ctxWave.lineTo(x, midY + 5);
+                ctxWave.stroke();
+                ctxWave.fillText(l.text, x - 5, midY + 20);
+            });
+
+            // 绘图辅助函数
+            const drawCurve = (func, color) => {
+                ctxWave.beginPath();
+                ctxWave.strokeStyle = color;
+                ctxWave.lineWidth = 3;
+                
+                // 为了性能，不画所有点，每2像素取样一次
+                for (let x = 0; x <= graphWidth; x += 2) {
+                    const currentAngle = x / scaleX;
+                    let val = func(currentAngle);
+                    
+                    // Tan 截断处理
+                    if (func === Math.tan && Math.abs(val) > 3) {
+                         ctxWave.stroke();
+                         ctxWave.beginPath(); // 断开线条
+                         continue;
+                    }
+
+                    const y = midY - val * scaleY;
+                    if (x === 0) ctxWave.moveTo(startX + x, y);
+                    else ctxWave.lineTo(startX + x, y);
+                }
+                ctxWave.stroke();
+            };
+
+            // 1. 绘制 Sin 曲线
+            if (state.showSin) drawCurve(Math.sin, colors.sin);
+            
+            // 2. 绘制 Cos 曲线
+            if (state.showCos) drawCurve(Math.cos, 'rgba(66, 133, 244, 0.5)'); // Cos用半透明，防止太乱
+
+            // 3. 绘制 Tan 曲线 (如果开启)
+            // Tan线比较乱，通常只在单独演示时开启较好，这里为了完整性画出，但透明度低
+            if (state.showTan) drawCurve(Math.tan, 'rgba(52, 168, 83, 0.3)');
+
+            // 绘制当前位置指示线
+            // 当前角度需要在 0-4PI 之间循环显示，或者只显示 0-2PI
+            // 这里为了演示连续性，我们在当前角度位置画一条竖线
+            
+            // 我们不仅要显示当前角度，还要显示历史轨迹感。
+            // 简单做法：在当前 angle 对应的 x 位置画一个点和竖线。
+            
+            // 处理多周期显示：如果 angle 是 0.5PI, 我们在 0.5PI, 2.5PI 处都显示提示点
+            
+            const currentY_sin = midY - Math.sin(state.angle) * scaleY;
+            const currentY_cos = midY - Math.cos(state.angle) * scaleY;
+
+            // 既然是演示，我们在第一个周期内绘制主要指示器
+            const currentX = startX + state.angle * scaleX;
+            
+            // 垂直指示线
+            ctxWave.beginPath();
+            ctxWave.strokeStyle = colors.highlight;
+            ctxWave.lineWidth = 2;
+            ctxWave.setLineDash([5, 5]);
+            ctxWave.moveTo(currentX, 10);
+            ctxWave.lineTo(currentX, height - 10);
+            ctxWave.stroke();
+            ctxWave.setLineDash([]);
+
+            // Sin 点
+            if (state.showSin) {
+                ctxWave.beginPath();
+                ctxWave.fillStyle = colors.sin;
+                ctxWave.arc(currentX, currentY_sin, 6, 0, Math.PI*2);
+                ctxWave.fill();
+            }
+             // Cos 点
+             if (state.showCos) {
+                ctxWave.beginPath();
+                ctxWave.fillStyle = colors.cos;
+                ctxWave.arc(currentX, currentY_cos, 6, 0, Math.PI*2);
+                ctxWave.fill();
+            }
+
+        }
+
+        // --- 6. UI 更新 ---
+        function updateUI() {
+            // 角度规范化到 0-360
+            const deg = (state.angle * 180 / Math.PI).toFixed(0);
+            uiElements.angleDeg.innerText = `${deg}°`;
+            uiElements.angleRad.innerText = `${(state.angle / Math.PI).toFixed(2)}π`;
+
+            // 数值
+            const sinVal = Math.sin(state.angle);
+            const cosVal = Math.cos(state.angle);
+            const tanVal = Math.tan(state.angle);
+
+            uiElements.valSin.innerText = sinVal.toFixed(2);
+            uiElements.valCos.innerText = cosVal.toFixed(2);
+            
+            if (Math.abs(tanVal) > 100) {
+                uiElements.valTan.innerText = "∞";
+            } else {
+                uiElements.valTan.innerText = tanVal.toFixed(2);
+            }
+        }
+
+        // 启动
+        window.onload = init;
+
+    </script>
+</body>
+</html>

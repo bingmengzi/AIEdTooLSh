@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AiEdToolsH - AI教育交互动画生成平台</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#F9FAFB] min-h-screen">
+    <div class="flex flex-col items-center justify-center min-h-screen px-4">
+        <!-- 主内容区域，垂直位置略偏上 -->
+        <div class="w-full max-w-2xl -mt-20 animate-fade-in-up">
+            <!-- Logo + 标题 -->
+            <div class="flex items-center justify-center mb-4">
+                <!-- Logo: 深色圆角方块 + 白色学士帽图标 -->
+                <div class="w-14 h-14 bg-[#1E293B] rounded-xl flex items-center justify-center mr-4 shadow-sm">
+                    <i class="fa-solid fa-graduation-cap text-white text-2xl"></i>
+                </div>
+                <!-- 标题 -->
+                <h1 class="text-4xl font-bold text-[#1E293B] tracking-tight">AiEdToolsH</h1>
+            </div>
+            
+            <!-- 副标题 -->
+            <p class="text-center text-gray-500 text-lg mb-10">在此赋予知识以生命，交互之间</p>
+            
+            <!-- 搜索框 -->
+            <form id="search-form" class="relative mb-6">
+                <div class="flex items-center bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 px-6 py-3">
+                    <input 
+                        type="text" 
+                        id="search-input"
+                        class="search-input flex-1 bg-transparent border-none outline-none text-gray-700 text-base placeholder-gray-400 pr-4"
+                        placeholder="输入知识点或题目，如：将军饮马问题、勾股定理、抛物线..."
+                    >
+                    <!-- 提交按钮 -->
+                    <button 
+                        type="submit"
+                        class="submit-btn w-11 h-11 bg-[#1E293B] rounded-full flex items-center justify-center flex-shrink-0 hover:bg-[#374151]"
+                        aria-label="提交"
+                    >
+                        <i class="fa-solid fa-arrow-up text-white text-sm"></i>
+                    </button>
+                </div>
+            </form>
+            
+            <!-- 示例标签 -->
+            <div class="flex flex-wrap items-center justify-center gap-3">
+                <button class="example-btn px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-full hover:bg-gray-50" data-query="将军饮马问题">
+                    将军饮马问题
+                </button>
+                <button class="example-btn px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-full hover:bg-gray-50" data-query="勾股定理">
+                    勾股定理
+                </button>
+                <button class="example-btn px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-full hover:bg-gray-50" data-query="抛物线与焦点">
+                    抛物线与焦点
+                </button>
+                <button class="example-btn px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-full hover:bg-gray-50" data-query="三角形内角和">
+                    三角形内角和
+                </button>
+            </div>
+        </div>
+        
+        <!-- 底部版权 -->
+        <footer class="absolute bottom-6 text-center text-gray-400 text-sm">
+            Copyright © 2026 AiEdToolsH. All rights reserved.
+        </footer>
+    </div>
+    
+    <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>互动课堂：解一元二次方程</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 隐藏数字输入框的上下箭头 */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: #F5F7FB; /* 护眼浅蓝灰背景 */
+        }
+        .step-locked {
+            opacity: 0.4;
+            pointer-events: none;
+            filter: grayscale(100%);
+            transform: scale(0.98);
+        }
+        .step-unlocked {
+            opacity: 1;
+            pointer-events: auto;
+            filter: grayscale(0%);
+            transform: scale(1);
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 p-4 md:p-8 flex flex-col items-center">
+
+    <!-- 顶部标题栏 -->
+    <header class="w-full max-w-6xl mb-8 flex items-center justify-between bg-white rounded-2xl shadow-sm p-4 px-8 border-b-4 border-[#4285F4]">
+        <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-full overflow-hidden bg-blue-100 flex-shrink-0 border-2 border-[#4285F4]">
+                <!-- API 生成的教育插图 -->
+                <img src="https://api.zcat.cn/udata/718570/png/da4553aa857ae6a8cf5550349b798e1b.png" alt="老师头像" class="w-full h-full object-cover">
+            </div>
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-[#4285F4]">探索一元二次方程的奥秘</h1>
+                <p class="text-slate-500 mt-1 text-sm md:text-base">今天的目标：解方程 <strong class="text-lg text-slate-700 bg-slate-100 px-2 py-1 rounded">x² - 5x + 6 = 0</strong></p>
+            </div>
+        </div>
+        <div class="hidden md:block">
+            <span class="bg-[#e6f4ea] text-[#34A853] px-4 py-2 rounded-full font-bold text-sm">
+                <i class="fas fa-check-circle mr-1"></i> 互动教学模式
+            </span>
+        </div>
+    </header>
+
+    <!-- 核心互动区域 -->
+    <main class="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左侧：解题步骤 (占 7 列) -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+            
+            <!-- 步骤 1：找朋友游戏 -->
+            <section class="bg-white rounded-2xl shadow-md p-6 border-l-8 border-[#FBBC05] relative overflow-hidden">
+                <div class="absolute top-0 right-0 bg-[#FBBC05] text-white px-4 py-1 rounded-bl-xl font-bold text-sm">步骤 1：因式分解法</div>
+                <h2 class="text-xl font-bold mb-4 flex items-center text-slate-700">
+                    <i class="fas fa-search text-[#FBBC05] mr-2 text-2xl"></i> 寻找神秘数字
+                </h2>
+                <p class="text-slate-600 mb-4 leading-relaxed">
+                    为了把方程变成 <strong>(x - a)(x - b) = 0</strong> 的形式，我们需要找到两个正数 <strong>a</strong> 和 <strong>b</strong>，满足：<br>
+                    1. 它们的 <span class="text-[#EA4335] font-bold">和是 5</span> (对应一次项系数的相反数)<br>
+                    2. 它们的 <span class="text-[#34A853] font-bold">乘积是 6</span> (对应常数项)
+                </p>
+                
+                <div class="bg-[#FAFAF5] rounded-xl p-6 border border-amber-100 flex flex-col md:flex-row items-center justify-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <input type="number" id="numA" class="w-20 h-20 text-3xl text-center font-bold text-[#4285F4] bg-white border-2 border-[#4285F4] rounded-xl shadow-inner focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all" placeholder="?">
+                        <span class="text-3xl font-bold text-slate-400">和</span>
+                        <input type="number" id="numB" class="w-20 h-20 text-3xl text-center font-bold text-[#4285F4] bg-white border-2 border-[#4285F4] rounded-xl shadow-inner focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all" placeholder="?">
+                    </div>
+                    <button id="checkBtn" onclick="checkNumbers()" class="mt-4 md:mt-0 ml-0 md:ml-4 bg-[#4285F4] hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-xl shadow-md active:transform active:scale-95 transition-all text-lg flex items-center gap-2">
+                        <i class="fas fa-magic"></i> 验证
+                    </button>
+                </div>
+                
+                <!-- 反馈提示区 -->
+                <div id="feedbackBox" class="mt-4 min-h-[40px] text-center font-bold text-lg hidden rounded-lg p-3">
+                    <!-- JS动态插入内容 -->
+                </div>
+            </section>
+
+            <!-- 步骤 2：得出结论 (初始锁定) -->
+            <section id="step2" class="bg-white rounded-2xl shadow-md p-6 border-l-8 border-[#34A853] relative step-locked transition-all duration-500">
+                <div class="absolute top-0 right-0 bg-[#34A853] text-white px-4 py-1 rounded-bl-xl font-bold text-sm">步骤 2：得出方程的解</div>
+                <h2 class="text-xl font-bold mb-4 flex items-center text-slate-700">
+                    <i class="fas fa-award text-[#34A853] mr-2 text-2xl"></i> 成功分解！
+                </h2>
+                <div class="bg-[#F0F7F4] rounded-xl p-5 text-center">
+                    <p class="text-lg text-slate-600 mb-2">原方程变成了这样：</p>
+                    <div class="text-3xl md:text-4xl font-bold text-[#34A853] tracking-wider mb-4" id="equationDisplay">
+                        (x - 2)(x - 3) = 0
+                    </div>
+                    <p class="text-slate-600">要让乘积为 0，只需其中一个括号里的值为 0：</p>
+                    <div class="flex justify-center gap-8 mt-4">
+                        <div class="bg-white px-6 py-3 rounded-lg shadow-sm border border-green-100 font-bold text-xl">
+                            <span class="text-slate-500">x₁ =</span> <span class="text-[#EA4335] text-2xl">2</span>
+                        </div>
+                        <div class="bg-white px-6 py-3 rounded-lg shadow-sm border border-green-100 font-bold text-xl">
+                            <span class="text-slate-500">x₂ =</span> <span class="text-[#EA4335] text-2xl">3</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="startGraphAnimation()" id="drawBtn" class="w-full mt-6 bg-gradient-to-r from-[#34A853] to-[#2b8a44] hover:from-[#2b8a44] hover:to-[#226d36] text-white font-bold py-4 rounded-xl shadow-lg active:transform active:scale-95 transition-all text-lg flex justify-center items-center gap-2">
+                    <i class="fas fa-chart-line"></i> 查看几何图像验证
+                </button>
+            </section>
+
+        </div>
+
+        <!-- 右侧：图形可视化 (占 5 列) -->
+        <div class="lg:col-span-5 flex flex-col h-full">
+            <section class="bg-white rounded-2xl shadow-md p-6 flex-grow flex flex-col relative border-t-8 border-[#4285F4]">
+                <h2 class="text-xl font-bold mb-4 flex items-center text-slate-700">
+                    <i class="fas fa-eye text-[#4285F4] mr-2 text-2xl"></i> 图像与 X 轴的交点
+                </h2>
+                <p class="text-sm text-slate-500 mb-4">
+                    方程 <strong>x² - 5x + 6 = 0</strong> 的解，就是二次函数 <strong>y = x² - 5x + 6</strong> 的图像与水平面（X轴）相交的地方！
+                </p>
+                
+                <div class="relative w-full aspect-square bg-[#F5F7FB] rounded-xl border-2 border-slate-200 overflow-hidden flex items-center justify-center">
+                    <!-- Canvas绘图区 -->
+                    <canvas id="mathCanvas" class="w-full h-full max-w-full"></canvas>
+                    
+                    <!-- 初始占位提示 -->
+                    <div id="canvasOverlay" class="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm transition-opacity duration-500">
+                        <i class="fas fa-lock text-4xl text-slate-300 mb-3"></i>
+                        <p class="text-slate-500 font-bold text-center px-4">解出方程后，<br>即可解锁函数图像动画</p>
+                    </div>
+                </div>
+                
+                <!-- 图解图例 -->
+                <div id="legendBox" class="mt-4 flex justify-center gap-4 opacity-0 transition-opacity duration-500">
+                    <span class="flex items-center text-sm font-bold text-slate-600"><span class="w-4 h-1 bg-[#4285F4] inline-block mr-2 rounded-full"></span> 函数曲线</span>
+                    <span class="flex items-center text-sm font-bold text-slate-600"><span class="w-3 h-3 bg-[#EA4335] rounded-full inline-block mr-2"></span> 方程的解 (交点)</span>
+                </div>
+            </section>
+        </div>
+        
+    </main>
+
+    <!-- JS 逻辑控制 -->
+    <script>
+        // ----------------- 全局变量与DOM -----------------
+        const inputA = document.getElementById('numA');
+        const inputB = document.getElementById('numB');
+        const feedbackBox = document.getElementById('feedbackBox');
+        const step2 = document.getElementById('step2');
+        const eqDisplay = document.getElementById('equationDisplay');
+        const canvasOverlay = document.getElementById('canvasOverlay');
+        const legendBox = document.getElementById('legendBox');
+        const drawBtn = document.getElementById('drawBtn');
+        
+        let canvas, ctx;
+        let isGraphDrawn = false;
+        
+        // ----------------- 初始化 Canvas -----------------
+        function initCanvas() {
+            canvas = document.getElementById('mathCanvas');
+            // 获取实际显示的宽高
+            const rect = canvas.parentElement.getBoundingClientRect();
+            // 设置高分辨率以防模糊
+            canvas.width = rect.width * 2;
+            canvas.height = rect.height * 2;
+            ctx = canvas.getContext('2d');
+            ctx.scale(2, 2); // 匹配高分辨率
+            
+            drawCoordinateSystem();
+        }
+
+        // 窗口尺寸改变时重新自适应
+        window.addEventListener('resize', () => {
+            if(!isGraphDrawn) {
+                initCanvas();
+            }
+        });
+        
+        // ----------------- 步骤 1：逻辑校验 -----------------
+        function checkNumbers() {
+            const valA = parseInt(inputA.value);
+            const valB = parseInt(inputB.value);
+            
+            // 错误处理：输入为空
+            if (isNaN(valA) || isNaN(valB)) {
+                showFeedback('请在两个方框中都输入数字哦！', 'error');
+                shakeInputs();
+                return;
+            }
+
+            const sum = valA + valB;
+            const product = valA * valB;
+
+            feedbackBox.classList.remove('hidden');
+
+            if (product === 6 && sum === 5) {
+                // 完全正确
+                showFeedback('<i class="fas fa-party-horn"></i> 太棒了！正是 2 和 3。', 'success');
+                
+                // 动态更新步骤2的显示 (确保不管顺序如何，看起来顺畅)
+                const min = Math.min(valA, valB);
+                const max = Math.max(valA, valB);
+                eqDisplay.innerText = `(x - ${min})(x - ${max}) = 0`;
+                
+                // 解锁步骤 2
+                setTimeout(() => {
+                    step2.classList.remove('step-locked');
+                    step2.classList.add('step-unlocked');
+                    canvasOverlay.classList.add('opacity-0');
+                    setTimeout(()=> canvasOverlay.style.display = 'none', 500); // 完全移除遮罩
+                }, 800);
+                
+                // 锁定输入框防止乱改
+                inputA.disabled = true;
+                inputB.disabled = true;
+                document.getElementById('checkBtn').disabled = true;
+                document.getElementById('checkBtn').classList.add('opacity-50', 'cursor-not-allowed');
+
+            } else if (product === 6) {
+                // 乘积对，和不对
+                showFeedback('<i class="fas fa-lightbulb"></i> 乘积是 6 了！但是加起来不是 5 哦，再换两个数试试。', 'warning');
+                shakeInputs();
+            } else if (sum === 5) {
+                // 和对，乘积不对
+                showFeedback('<i class="fas fa-lightbulb"></i> 加起来是 5 了！但是乘起来不是 6 哦。', 'warning');
+                shakeInputs();
+            } else {
+                // 都不对
+                showFeedback('<i class="fas fa-times-circle"></i> 不对哦，再想想：哪两个数相乘得 6，相加得 5？', 'error');
+                shakeInputs();
+            }
+        }
+
+        // ----------------- UI 辅助函数 -----------------
+        function showFeedback(htmlMessage, type) {
+            feedbackBox.innerHTML = htmlMessage;
+            feedbackBox.className = 'mt-4 min-h-[50px] flex items-center justify-center font-bold text-lg rounded-xl p-3 transition-all duration-300';
+            
+            if (type === 'success') {
+                feedbackBox.classList.add('bg-[#e6f4ea]', 'text-[#34A853]');
+            } else if (type === 'warning') {
+                feedbackBox.classList.add('bg-[#fef7e0]', 'text-[#FBBC05]');
+            } else if (type === 'error') {
+                feedbackBox.classList.add('bg-[#fce8e6]', 'text-[#EA4335]');
+            }
+        }
+
+        function shakeInputs() {
+            inputA.parentElement.classList.remove('shake');
+            void inputA.parentElement.offsetWidth; // 触发重绘
+            inputA.parentElement.classList.add('shake');
+        }
+
+        // ----------------- 步骤 3：Canvas 图形绘制 -----------------
+        // 坐标系配置参数
+        const mathCfg = {
+            xMin: -1, xMax: 6,
+            yMin: -2, yMax: 8
+        };
+
+        // 将数学坐标转换为 Canvas 像素坐标
+        function getPx(mathX, w) {
+            return (mathX - mathCfg.xMin) / (mathCfg.xMax - mathCfg.xMin) * w;
+        }
+        function getPy(mathY, h) {
+            return h - (mathY - mathCfg.yMin) / (mathCfg.yMax - mathCfg.yMin) * h;
+        }
+
+        function drawCoordinateSystem() {
+            const w = canvas.width / 2;
+            const h = canvas.height / 2;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            // 绘制网格
+            ctx.strokeStyle = '#e2e8f0'; // slate-200
+            ctx.lineWidth = 1;
+            for(let i = Math.ceil(mathCfg.xMin); i <= Math.floor(mathCfg.xMax); i++) {
+                let px = getPx(i, w);
+                ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, h); ctx.stroke();
+            }
+            for(let i = Math.ceil(mathCfg.yMin); i <= Math.floor(mathCfg.yMax); i++) {
+                let py = getPy(i, h);
+                ctx.beginPath(); ctx.moveTo(0, py); ctx.lineTo(w, py); ctx.stroke();
+            }
+
+            // 绘制 X/Y 轴
+            ctx.strokeStyle = '#94a3b8'; // slate-400
+            ctx.lineWidth = 2;
+            
+            const originY = getPy(0, h);
+            const originX = getPx(0, w);
+            
+            // X轴
+            ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(w, originY); ctx.stroke();
+            // Y轴
+            ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, h); ctx.stroke();
+
+            // 刻度文字
+            ctx.fillStyle = '#64748b'; // slate-500
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            for(let i = 1; i <= 5; i++) {
+                ctx.fillText(i.toString(), getPx(i, w), originY + 15);
+            }
+        }
+
+        // 动画绘制抛物线
+        function startGraphAnimation() {
+            if (isGraphDrawn) return;
+            isGraphDrawn = true;
+            
+            // 更改按钮状态
+            drawBtn.innerHTML = '<i class="fas fa-check"></i> 图像已生成';
+            drawBtn.classList.remove('from-[#34A853]', 'hover:from-[#2b8a44]');
+            drawBtn.classList.add('bg-slate-300', 'text-slate-600', 'cursor-default', 'pointer-events-none');
+            
+            legendBox.classList.remove('opacity-0');
+
+            const w = canvas.width / 2;
+            const h = canvas.height / 2;
+            
+            // 二次函数 y = x^2 - 5x + 6
+            const f = (x) => x*x - 5*x + 6;
+            
+            let currentX = 0; // 从 x=0 开始画
+            const targetX = 5;
+            const stepX = 0.05;
+
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#4285F4'; // Google Blue
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            ctx.beginPath();
+            ctx.moveTo(getPx(currentX, w), getPy(f(currentX), h));
+
+            function drawFrame() {
+                if (currentX <= targetX) {
+                    currentX += stepX;
+                    ctx.lineTo(getPx(currentX, w), getPy(f(currentX), h));
+                    ctx.stroke();
+                    requestAnimationFrame(drawFrame);
+                } else {
+                    // 线画完了，高亮标记交点
+                    drawIntersectionPoints(w, h);
+                }
+            }
+            
+            drawFrame();
+        }
+
+        function drawIntersectionPoints(w, h) {
+            const points = [2, 3]; // x=2, x=3
+            
+            points.forEach((x, index) => {
+                const px = getPx(x, w);
+                const py = getPy(0, h); // y=0
+                
+                // 延迟一点依次出现
+                setTimeout(() => {
+                    // 外圈光晕
+                    ctx.beginPath();
+                    ctx.arc(px, py, 10, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(234, 67, 53, 0.3)'; // 红色的半透明
+                    ctx.fill();
+                    
+                    // 内心红点
+                    ctx.beginPath();
+                    ctx.arc(px, py, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#EA4335';
+                    ctx.fill();
+
+                    // 文字标签
+                    ctx.fillStyle = '#EA4335';
+                    ctx.font = 'bold 16px Arial';
+                    ctx.textAlign = 'center';
+                    // x=2文字偏左下，x=3文字偏右下，防止重叠
+                    const offsetY = 25;
+                    const offsetX = index === 0 ? -10 : 10;
+                    
+                    ctx.fillText(`x=${x}`, px + offsetX, py - offsetY);
+                    
+                }, index * 400); // 间隔400ms出现
+            });
+        }
+
+        // 页面加载完成后初始化画布
+        window.onload = initCanvas;
+
+    </script>
+</body>
+</html>

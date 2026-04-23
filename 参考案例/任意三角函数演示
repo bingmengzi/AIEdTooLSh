@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任意角的三角函数演示</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+            background-color: #f3f4f6;
+            overflow-x: hidden;
+        }
+        canvas {
+            touch-action: none; /* 防止触摸时滚动页面 */
+            cursor: crosshair;
+        }
+        .math-text {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+        }
+        .card-shadow {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+        .card-shadow:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        .value-card {
+            border-left-width: 5px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <!-- 顶部导航 -->
+    <header class="bg-white shadow-sm z-10 relative">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                    <i class="fa-solid fa-shapes text-xl"></i>
+                </div>
+                <h1 class="text-xl font-bold text-gray-800 tracking-wide">数学实验室：任意角的三角函数</h1>
+            </div>
+            <div class="hidden md:flex items-center text-sm text-gray-500">
+                <span class="mr-4"><i class="fa-solid fa-mouse-pointer mr-1"></i> 拖动圆点</span>
+                <span><i class="fa-solid fa-play mr-1"></i> 播放动画</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左侧：可视化交互区 -->
+        <div class="lg:col-span-7 flex flex-col gap-4">
+            <!-- Canvas 容器 -->
+            <div class="bg-white rounded-2xl card-shadow p-1 relative overflow-hidden flex-grow min-h-[400px] flex items-center justify-center bg-[url('https://api.zcat.cn/udata/709373/png/38f3ae91dacac4278fd05a9ee0c0048a.png')] bg-cover bg-center">
+                <!-- 遮罩层，让网格背景变淡 -->
+                <div class="absolute inset-0 bg-white/90"></div>
+                
+                <canvas id="trigCanvas" class="relative z-10 w-full h-full max-w-[600px] max-h-[600px]"></canvas>
+                
+                <!-- 浮动在Canvas上的象限提示 -->
+                <div class="absolute top-4 left-4 z-20 bg-white/80 backdrop-blur px-3 py-1 rounded-full text-sm font-bold text-gray-600 border border-gray-200 shadow-sm">
+                    第 <span id="quadrantDisplay">I</span> 象限
+                </div>
+            </div>
+
+            <!-- 控制条 -->
+            <div class="bg-white rounded-xl card-shadow p-4 flex flex-wrap items-center gap-4">
+                <button id="playBtn" class="w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <i class="fa-solid fa-play"></i>
+                </button>
+                
+                <div class="flex-grow flex flex-col justify-center">
+                    <div class="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>0°</span>
+                        <span id="sliderValDisplay" class="font-bold text-blue-600">45°</span>
+                        <span>360°</span>
+                    </div>
+                    <input type="range" id="angleSlider" min="0" max="360" value="45" step="1" 
+                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                </div>
+
+                <div class="flex gap-2">
+                    <button onclick="setAngle(30)" class="px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded-md transition">30°</button>
+                    <button onclick="setAngle(45)" class="px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded-md transition">45°</button>
+                    <button onclick="setAngle(60)" class="px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded-md transition">60°</button>
+                    <button onclick="setAngle(90)" class="px-3 py-1 text-xs font-medium bg-gray-100 hover:bg-gray-200 rounded-md transition">90°</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：数据展示与教学区 -->
+        <div class="lg:col-span-5 flex flex-col gap-4">
+            
+            <!-- 角度信息卡片 -->
+            <div class="bg-white rounded-xl card-shadow p-5 border-l-4 border-yellow-400">
+                <h3 class="text-gray-500 text-sm uppercase font-bold mb-2">当前角度 Angle</h3>
+                <div class="flex items-end gap-4">
+                    <div class="text-4xl font-bold text-gray-800 math-text">
+                        α = <span id="degValue" class="text-yellow-500">45</span>°
+                    </div>
+                    <div class="text-lg text-gray-500 mb-1 math-text">
+                        ≈ <span id="radValue">0.79</span> rad
+                    </div>
+                </div>
+                <div class="mt-2 text-xs text-gray-400">角度制与弧度制互换：rad = deg × π / 180</div>
+            </div>
+
+            <!-- 核心三角函数值 -->
+            <div class="grid grid-cols-1 gap-4">
+                
+                <!-- Sin -->
+                <div class="bg-white rounded-xl card-shadow p-4 value-card border-red-500 flex items-center justify-between group hover:bg-red-50 transition-colors">
+                    <div>
+                        <div class="text-xs font-bold text-red-500 uppercase mb-1">正弦 Sine (y坐标)</div>
+                        <div class="text-2xl font-bold text-gray-800 math-text group-hover:text-red-600 transition-colors">
+                            sin(α) = <span id="sinValue">0.707</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-500 text-xl">
+                        <i class="fa-solid fa-wave-square"></i>
+                    </div>
+                </div>
+
+                <!-- Cos -->
+                <div class="bg-white rounded-xl card-shadow p-4 value-card border-blue-500 flex items-center justify-between group hover:bg-blue-50 transition-colors">
+                    <div>
+                        <div class="text-xs font-bold text-blue-500 uppercase mb-1">余弦 Cosine (x坐标)</div>
+                        <div class="text-2xl font-bold text-gray-800 math-text group-hover:text-blue-600 transition-colors">
+                            cos(α) = <span id="cosValue">0.707</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 text-xl">
+                        <i class="fa-solid fa-arrow-right-long"></i>
+                    </div>
+                </div>
+
+                <!-- Tan -->
+                <div class="bg-white rounded-xl card-shadow p-4 value-card border-green-500 flex items-center justify-between group hover:bg-green-50 transition-colors">
+                    <div>
+                        <div class="text-xs font-bold text-green-500 uppercase mb-1">正切 Tangent (斜率)</div>
+                        <div class="text-2xl font-bold text-gray-800 math-text group-hover:text-green-600 transition-colors">
+                            tan(α) = <span id="tanValue">1.000</span>
+                        </div>
+                    </div>
+                    <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-500 text-xl">
+                        <i class="fa-solid fa-ruler-combined"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 坐标显示 -->
+            <div class="bg-indigo-50 rounded-xl border border-indigo-100 p-4">
+                <h4 class="text-indigo-800 font-bold mb-2 text-sm"><i class="fa-solid fa-location-dot mr-2"></i>单位圆上点 P 的坐标</h4>
+                <div class="text-center text-xl font-mono text-indigo-600 bg-white py-3 rounded-lg shadow-inner">
+                    P(<span id="coordX">0.71</span>, <span id="coordY">0.71</span>)
+                </div>
+                <p class="text-center text-xs text-indigo-400 mt-2">P(x, y) = (cos α, sin α)</p>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // 常量定义
+        const COLORS = {
+            primary: '#4285F4',   // Blue (Cos)
+            danger: '#EA4335',    // Red (Sin)
+            success: '#34A853',   // Green (Tan)
+            warning: '#FBBC05',   // Yellow (Angle)
+            grid: '#e5e7eb',
+            axis: '#374151',
+            text: '#1f2937'
+        };
+
+        // DOM 元素
+        const canvas = document.getElementById('trigCanvas');
+        const ctx = canvas.getContext('2d');
+        const angleSlider = document.getElementById('angleSlider');
+        const playBtn = document.getElementById('playBtn');
+        
+        // 数据显示元素
+        const displays = {
+            deg: document.getElementById('degValue'),
+            rad: document.getElementById('radValue'),
+            sin: document.getElementById('sinValue'),
+            cos: document.getElementById('cosValue'),
+            tan: document.getElementById('tanValue'),
+            coordX: document.getElementById('coordX'),
+            coordY: document.getElementById('coordY'),
+            sliderVal: document.getElementById('sliderValDisplay'),
+            quadrant: document.getElementById('quadrantDisplay')
+        };
+
+        // 状态变量
+        let state = {
+            angleDeg: 45,
+            isPlaying: false,
+            animationId: null,
+            radius: 180, // 将在resize中重新计算
+            centerX: 300,
+            centerY: 300
+        };
+
+        // 初始化
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // 事件监听
+            angleSlider.addEventListener('input', (e) => {
+                updateAngle(parseFloat(e.target.value));
+                if(state.isPlaying) togglePlay(); // 拖动时暂停
+            });
+
+            playBtn.addEventListener('click', togglePlay);
+
+            // Canvas 鼠标/触摸交互
+            canvas.addEventListener('mousedown', handleInputStart);
+            canvas.addEventListener('mousemove', handleInputMove);
+            window.addEventListener('mouseup', handleInputEnd);
+            
+            canvas.addEventListener('touchstart', handleInputStart, {passive: false});
+            canvas.addEventListener('touchmove', handleInputMove, {passive: false});
+            window.addEventListener('touchend', handleInputEnd);
+
+            // 初始绘制
+            updateAngle(45);
+        }
+
+        // 调整 Canvas 大小
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            state.centerX = canvas.width / 2;
+            state.centerY = canvas.height / 2;
+            // 半径取宽高中较小值的 35-40% 左右，留出空间给 Tan 线
+            state.radius = Math.min(canvas.width, canvas.height) * 0.35;
+            
+            draw();
+        }
+
+        // 核心更新逻辑
+        function updateAngle(deg) {
+            // 规范化角度到 0-360
+            state.angleDeg = (deg % 360 + 360) % 360; 
+            
+            // 更新滑块（如果是自动播放或点击触发）
+            angleSlider.value = state.angleDeg;
+            
+            updateUIValues();
+            draw();
+        }
+
+        // 更新界面数值
+        function updateUIValues() {
+            const rad = (state.angleDeg * Math.PI) / 180;
+            const sinVal = Math.sin(rad);
+            const cosVal = Math.cos(rad);
+            const tanVal = Math.tan(rad);
+
+            // 格式化函数
+            const fmt = (n) => {
+                let s = n.toFixed(3);
+                if (Object.is(n, -0)) s = "0.000"; // 处理 -0.000
+                return s;
+            };
+
+            displays.deg.innerText = state.angleDeg.toFixed(0);
+            displays.rad.innerText = rad.toFixed(2);
+            displays.sliderVal.innerText = state.angleDeg.toFixed(0) + '°';
+
+            displays.sin.innerText = fmt(sinVal);
+            displays.cos.innerText = fmt(cosVal);
+            
+            // 处理 Tan 的无穷大情况
+            if (Math.abs(tanVal) > 100) {
+                displays.tan.innerText = "∞";
+            } else {
+                displays.tan.innerText = fmt(tanVal);
+            }
+
+            displays.coordX.innerText = fmt(cosVal);
+            displays.coordY.innerText = fmt(sinVal);
+
+            // 更新象限
+            let q = "I";
+            const a = state.angleDeg;
+            if (a > 0 && a < 90) q = "I";
+            else if (a > 90 && a < 180) q = "II";
+            else if (a > 180 && a < 270) q = "III";
+            else if (a > 270 && a < 360) q = "IV";
+            else if (a === 0 || a === 360) q = "轴上 (+x)";
+            else if (a === 90) q = "轴上 (+y)";
+            else if (a === 180) q = "轴上 (-x)";
+            else if (a === 270) q = "轴上 (-y)";
+            displays.quadrant.innerText = q;
+        }
+
+        // 外部按钮调用
+        window.setAngle = function(deg) {
+            updateAngle(deg);
+            if(state.isPlaying) togglePlay();
+        };
+
+        // 播放控制
+        function togglePlay() {
+            state.isPlaying = !state.isPlaying;
+            const icon = playBtn.querySelector('i');
+            
+            if (state.isPlaying) {
+                icon.className = 'fa-solid fa-pause';
+                playBtn.classList.replace('bg-blue-500', 'bg-red-500'); // 变红表示暂停
+                playBtn.classList.replace('hover:bg-blue-600', 'hover:bg-red-600');
+                animate();
+            } else {
+                icon.className = 'fa-solid fa-play';
+                playBtn.classList.replace('bg-red-500', 'bg-blue-500');
+                playBtn.classList.replace('hover:bg-red-600', 'hover:bg-blue-600');
+                cancelAnimationFrame(state.animationId);
+            }
+        }
+
+        function animate() {
+            updateAngle(state.angleDeg + 0.5); // 速度
+            state.animationId = requestAnimationFrame(animate);
+        }
+
+        // 交互处理
+        let isDragging = false;
+
+        function handleInputStart(e) {
+            e.preventDefault();
+            isDragging = true;
+            calculateAngleFromEvent(e);
+        }
+
+        function handleInputMove(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            calculateAngleFromEvent(e);
+        }
+
+        function handleInputEnd() {
+            isDragging = false;
+        }
+
+        function calculateAngleFromEvent(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            // Canvas 坐标转换
+            const dx = clientX - rect.left - state.centerX;
+            const dy = clientY - rect.top - state.centerY;
+
+            // 计算角度 (Math.atan2 返回 -PI 到 PI)
+            // 注意 Canvas Y轴向下，数学Y轴向上，所以 dy 取反?
+            // 其实 Canvas 坐标系中，下是正Y。
+            // atan2(y, x) -> 0是3点钟方向，顺时针为正。
+            // 我们希望 0度是3点钟，逆时针为正（数学标准）。
+            // 所以用 atan2(-dy, dx)
+            let angleRad = Math.atan2(-dy, dx);
+            let angleDeg = angleRad * 180 / Math.PI;
+
+            if (angleDeg < 0) angleDeg += 360;
+
+            // 吸附到特殊角度 (±2度范围内)
+            const snapAngles = [0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330, 360];
+            for (let snap of snapAngles) {
+                if (Math.abs(angleDeg - snap) < 2) {
+                    angleDeg = snap;
+                    break;
+                }
+            }
+
+            updateAngle(angleDeg);
+        }
+
+
+        // ================= 绘图逻辑 =================
+        function draw() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const cx = state.centerX;
+            const cy = state.centerY;
+            const r = state.radius;
+            const rad = state.angleDeg * Math.PI / 180;
+
+            // 坐标系转换：Y轴向上为正
+            // 画点(x, y) 对应 Canvas (cx + x, cy - y)
+            
+            // 1. 绘制网格
+            drawGrid(cx, cy);
+
+            // 2. 绘制坐标轴
+            drawAxes(cx, cy);
+
+            // 3. 绘制单位圆
+            ctx.beginPath();
+            ctx.arc(cx, cy, r, 0, Math.PI * 2);
+            ctx.strokeStyle = '#9ca3af';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 计算点 P 的位置 (Canvas坐标)
+            // x = r * cos, y = r * sin (注意Canvas Y轴翻转)
+            const px = cx + r * Math.cos(rad);
+            const py = cy - r * Math.sin(rad);
+
+            // 4. 绘制角度扇形 (从0到当前角度)
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            // arc(x, y, radius, startAngle, endAngle, counterClockwise)
+            // Canvas standard: 0 is 3 o'clock, positive is clockwise.
+            // Math standard: positive is counter-clockwise.
+            // So we draw from 0 to -rad (counter-clockwise visual)
+            ctx.arc(cx, cy, r * 0.2, 0, -rad, true); 
+            ctx.lineTo(cx, cy);
+            ctx.fillStyle = hexToRgba(COLORS.warning, 0.3);
+            ctx.fill();
+            ctx.strokeStyle = COLORS.warning;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // 5. 绘制半径线 (OP)
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(px, py);
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 6. 辅助线和三角函数线
+            
+            // Cosine 线 (蓝色, 在X轴上)
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(px, cy); // 投影到X轴
+            ctx.strokeStyle = COLORS.primary;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            // 虚线连接 P 到 X轴
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(px, py);
+            ctx.lineTo(px, cy);
+            ctx.strokeStyle = COLORS.primary; // 也可以用淡蓝
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Sine 线 (红色, P点到X轴的垂直距离，或者投影到Y轴)
+            // 为了直观，通常画从 (px, cy) 到 (px, py) 这段竖直线，或者画在Y轴上。
+            // 这里画在Y轴上更符合"投影"定义，但画三角形更符合"直角三角形"定义。
+            // 方案：画在Y轴上强调坐标定义。
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.lineTo(cx, py); // 投影到Y轴
+            ctx.strokeStyle = COLORS.danger;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            // 虚线连接 P 到 Y轴
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(px, py);
+            ctx.lineTo(cx, py);
+            ctx.strokeStyle = COLORS.danger;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Tangent 线 (绿色, x=1 处的切线)
+            // Tan线通常定义为过(1,0)的垂直线，与半径延长线相交。
+            // 只有当 cos != 0 时才画
+            if (Math.abs(Math.cos(rad)) > 0.01) {
+                const tanY = -r * Math.tan(rad); // 相对于中心的Y偏移
+                // 限制绘制范围，防止溢出屏幕
+                if (Math.abs(tanY) < 10000) {
+                    const tanTargetY = cy + tanY;
+                    const tanStartX = cx + r; // (1, 0) position
+                    
+                    // 绘制切线轴 x=1 (从中心右侧r处，垂直)
+                    ctx.beginPath();
+                    ctx.moveTo(tanStartX, cy - Math.max(canvas.height, Math.abs(tanY))); 
+                    ctx.lineTo(tanStartX, cy + Math.max(canvas.height, Math.abs(tanY)));
+                    ctx.strokeStyle = '#e5e7eb'; // 淡淡的轴线
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    // 绘制实际 Tan 值线段 (从 (1,0) 到 (1, tan))
+                    ctx.beginPath();
+                    ctx.moveTo(tanStartX, cy);
+                    ctx.lineTo(tanStartX, tanTargetY);
+                    ctx.strokeStyle = COLORS.success;
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+
+                    // 半径延长线 (连接原点到 Tan点)
+                    ctx.beginPath();
+                    ctx.setLineDash([2, 4]);
+                    ctx.moveTo(cx, cy);
+                    // 延伸足够长
+                    // 判断方向
+                    if (Math.cos(rad) > 0) {
+                        ctx.lineTo(tanStartX, tanTargetY);
+                    } else {
+                         // 如果在二三象限，需要反向延伸
+                        ctx.lineTo(tanStartX, tanTargetY);
+                    }
+                    ctx.strokeStyle = '#9ca3af';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // 7. 绘制点 P
+            ctx.beginPath();
+            ctx.arc(px, py, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.strokeStyle = COLORS.text;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 绘制点 (1,0) 提示 Tan 起点
+            ctx.beginPath();
+            ctx.arc(cx + r, cy, 3, 0, Math.PI * 2);
+            ctx.fillStyle = COLORS.success;
+            ctx.fill();
+        }
+
+        function drawGrid(cx, cy) {
+            ctx.beginPath();
+            ctx.strokeStyle = COLORS.grid;
+            ctx.lineWidth = 1;
+            const step = 40; // 网格大小
+            
+            // 纵向
+            for(let x = cx; x < canvas.width; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+            for(let x = cx; x > 0; x -= step) { ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); }
+            
+            // 横向
+            for(let y = cy; y < canvas.height; y += step) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+            for(let y = cy; y > 0; y -= step) { ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); }
+            
+            ctx.stroke();
+        }
+
+        function drawAxes(cx, cy) {
+            ctx.beginPath();
+            ctx.strokeStyle = COLORS.axis;
+            ctx.lineWidth = 2;
+            
+            // X Axis
+            ctx.moveTo(0, cy);
+            ctx.lineTo(canvas.width, cy);
+            // Arrow X
+            ctx.lineTo(canvas.width - 10, cy - 5);
+            ctx.moveTo(canvas.width, cy);
+            ctx.lineTo(canvas.width - 10, cy + 5);
+
+            // Y Axis
+            ctx.moveTo(cx, canvas.height);
+            ctx.lineTo(cx, 0);
+            // Arrow Y
+            ctx.lineTo(cx - 5, 10);
+            ctx.moveTo(cx, 0);
+            ctx.lineTo(cx + 5, 10);
+            
+            ctx.stroke();
+
+            // Labels
+            ctx.font = '14px Arial';
+            ctx.fillStyle = COLORS.axis;
+            ctx.fillText('x', canvas.width - 20, cy + 20);
+            ctx.fillText('y', cx + 15, 20);
+            ctx.fillText('O', cx - 15, cy + 15);
+        }
+
+        // 辅助函数：Hex 转 RGBA
+        function hexToRgba(hex, alpha) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        // 启动
+        window.onload = init;
+
+    </script>
+</body>
+</html>

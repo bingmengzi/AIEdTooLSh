@@ -1,0 +1,97 @@
+## 光学专项指导
+
+你正在处理一道光学题目（透镜成像、光的反射/折射等）。
+
+### 凸透镜成像模拟要点
+
+参考"探究凸透镜成像"样例的实现方式：
+
+1. **场景布局**
+   - 水平光轴贯穿画面中央
+   - 透镜位于中央，用双曲线表示
+   - 标注焦点F、2倍焦距2F位置
+   - 物体（如蜡烛）可拖拽改变物距
+
+2. **光路绘制核心算法**
+```javascript
+// 三条特征光线
+// 1. 平行于主光轴 → 过焦点
+// 2. 过光心 → 方向不变
+// 3. 过焦点 → 平行射出
+
+function drawRays(ctx, objectPos, lensPos, focalLength) {
+    const { x: objX, y: objY } = objectPos;
+    const { x: lensX, y: axisY } = lensPos;
+    
+    // 光线1：平行入射，过焦点出射
+    ctx.beginPath();
+    ctx.moveTo(objX, objY);
+    ctx.lineTo(lensX, objY);  // 平行段
+    // 计算出射方向...
+    ctx.stroke();
+    
+    // 光线2：过光心
+    ctx.beginPath();
+    ctx.moveTo(objX, objY);
+    ctx.lineTo(lensX, axisY);  // 直接过光心
+    // 延长至像的位置...
+    ctx.stroke();
+}
+```
+
+3. **成像规律判断**
+```javascript
+function calcImage(u, f) {
+    // 透镜成像公式: 1/u + 1/v = 1/f
+    // 解出: v = uf / (u - f)
+    
+    if (Math.abs(u - f) < 0.1) {
+        return { type: 'parallel', v: Infinity }; // 不成像，平行光
+    }
+    
+    const v = (u * f) / (u - f);
+    const m = -v / u;  // 放大率
+    
+    return {
+        type: v > 0 ? 'real' : 'virtual',  // 实像/虚像
+        v: v,
+        magnification: Math.abs(m),
+        inverted: v > 0  // 实像倒立，虚像正立
+    };
+}
+```
+
+4. **视觉区分**
+   - 实际光线：实线，鲜艳颜色
+   - 虚像延长线：虚线，较淡颜色
+   - 实像：正常不透明度绘制
+   - 虚像：半透明绘制
+
+### 交互面板设计
+
+1. **参数控制**
+   - 焦距 f 滑块（范围如 5-15 cm）
+   - 物距 u 滑块（范围如 2-60 cm）
+   - 像距 v 显示（只读，根据公式计算）
+
+2. **实验记录表**
+   - 记录多组 (u, v, 像的性质)
+   - 方便学生总结成像规律
+
+3. **知识卡片**
+   - 成像规律表格
+   - 口诀记忆（一倍焦距分虚实，二倍焦距分大小）
+
+### 其他光学现象
+
+1. **反射定律**
+   - 入射角 = 反射角
+   - 用量角器或角度标注
+
+2. **折射定律**
+   - 斯涅尔定律：n₁sinθ₁ = n₂sinθ₂
+   - 不同介质用不同背景色区分
+
+3. **色散/棱镜**
+   - 白光分解成彩虹色
+   - 用渐变色表示光谱

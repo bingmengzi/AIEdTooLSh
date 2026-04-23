@@ -1,0 +1,301 @@
+# 动画规范
+
+所有动画效果**必须**遵守以下规范，确保流畅性和一致性。
+
+---
+
+## 一、强制要求：使用 requestAnimationFrame
+
+**绝对禁止使用 setInterval/setTimeout 做动画！**
+
+```javascript
+// 正确方式
+function animate() {
+    // 1. 更新动画状态
+    state.animationT += 0.02;
+    if (state.animationT > 3.5) state.animationT = -3.5;
+    
+    // 2. 重绘整个画面
+    draw();
+    
+    // 3. 继续下一帧
+    requestAnimationFrame(animate);
+}
+
+// 在 init() 中启动
+requestAnimationFrame(animate);
+```
+
+---
+
+## 二、动画状态管理（参数化控制）
+
+### 1. 集中在 state 对象中管理
+
+```javascript
+let state = {
+    // 动画参数
+    animationT: 0,       // 动画进度参数
+    animationSpeed: 0.02, // 动画速度
+    isAnimating: true,    // 是否播放
+    
+    // 其他状态...
+};
+```
+
+### 2. 动画进度的循环模式
+
+```javascript
+function animate() {
+    // 递增并循环
+    state.animationT += state.animationSpeed;
+    if (state.animationT > 3.5) {
+        state.animationT = -3.5;  // 循环回起点
+    }
+    
+    draw();
+    requestAnimationFrame(animate);
+}
+```
+
+### 3. 基于参数计算动画位置
+
+抽象化示例：招物线上的动画点
+
+```javascript
+function getAnimatedPointPosition(t) {
+    // 拍物线参数方程：x = pt², y = 2pt
+    const x = state.p * t * t;
+    const y = 2 * state.p * t;
+    return { x, y };
+}
+
+function drawAnimatedPoint(coords) {
+    const t = state.animationT;
+    const pos = getAnimatedPointPosition(t);
+    const screenPos = toScreen(pos.x, pos.y, coords);
+    
+    // 绘制动画点...
+}
+```
+
+---
+
+## 三、每帧调用完整的 draw()
+
+**关键原则**：每一帧都必须完整重绘整个画面，确保视觉一致性。
+
+```javascript
+function draw() {
+    const coords = getCanvasCoords();
+    
+    // 1. 清空画布
+    ctx.clearRect(0, 0, coords.width, coords.height);
+    
+    // 2. 绘制固定元素
+    drawGrid(coords);
+    drawAxes(coords);
+    drawMainShape(coords);
+    drawKeyPoints(coords);
+    
+    // 3. 绘制动画元素（依赖 state.animationT）
+    drawAnimatedPoint(coords);
+    drawAnimatedLines(coords);
+}
+
+function animate() {
+    state.animationT += 0.02;
+    if (state.animationT > 3.5) state.animationT = -3.5;
+    
+    draw();  // 完整重绘
+    requestAnimationFrame(animate);
+}
+```
+
+---
+
+## 四、动画元素的视觉表现
+
+### 1. 动画点样式（用黄色+白色边框）
+
+```javascript
+function drawAnimatedPoint(coords) {
+    const t = state.animationT;
+    const { x, y } = getAnimatedPointPosition(t);
+    const pos = toScreen(x, y, coords);
+    
+    // 黄色实心
+    ctx.fillStyle = '#FBBC05';  // Google Yellow
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 白色边框
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+}
+```
+
+### 2. 动画连线（虚线样式）
+
+```javascript
+function drawAnimatedLines(coords) {
+    const t = state.animationT;
+    const p = getAnimatedPointPosition(t);
+    const f = getFocusPosition();
+    const d = getDirectrixPoint(p);
+    
+    ctx.save();
+    ctx.setLineDash([4, 4]);  // 虚线
+    ctx.lineWidth = 1.5;
+    
+    // 点到焦点的线（红色）
+    ctx.strokeStyle = '#EA4335';
+    ctx.beginPath();
+    ctx.moveTo(toScreen(p.x, p.y, coords).x, toScreen(p.x, p.y, coords).y);
+    ctx.lineTo(toScreen(f.x, f.y, coords).x, toScreen(f.x, f.y, coords).y);
+    ctx.stroke();
+    
+    // 点到准线的线（绿色）
+    ctx.strokeStyle = '#34A853';
+    ctx.beginPath();
+    ctx.moveTo(toScreen(p.x, p.y, coords).x, toScreen(p.x, p.y, coords).y);
+    ctx.lineTo(toScreen(d.x, d.y, coords).x, toScreen(d.x, d.y, coords).y);
+    ctx.stroke();
+    
+    ctx.restore();
+}
+```
+
+### 3. 动态标签
+
+```javascript
+function drawDistanceLabels(coords) {
+    const t = state.animationT;
+    const p = getAnimatedPointPosition(t);
+    const f = getFocusPosition();
+    
+    // 计算中点位置
+    const midX = (p.x + f.x) / 2;
+    const midY = (p.y + f.y) / 2;
+    const midPos = toScreen(midX, midY, coords);
+    
+    ctx.fillStyle = '#4285F4';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('|PF|', midPos.x - 10, midPos.y - 5);
+}
+```
+
+---
+
+## 五、播放/暂停控制（可选）
+
+如果需要提供动画控制：
+
+```javascript
+let animationId = null;
+
+function startAnimation() {
+    if (animationId) return;
+    function loop() {
+        state.animationT += 0.02;
+        if (state.animationT > 3.5) state.animationT = -3.5;
+        draw();
+        animationId = requestAnimationFrame(loop);
+    }
+    animationId = requestAnimationFrame(loop);
+}
+
+function stopAnimation() {
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+    }
+}
+
+function toggleAnimation() {
+    if (animationId) {
+        stopAnimation();
+    } else {
+        startAnimation();
+    }
+}
+```
+
+---
+
+## 六、CSS Transition 用于 UI 动画
+
+对于 DOM 元素（按钮、卡片、滑块等），优先使用 CSS transition：
+
+```css
+/* 卡片淡入 */
+.fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 滑块按钮悬停 */
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.1);
+}
+
+/* 按钮点击 */
+button {
+    transition: all 0.2s ease;
+}
+button:active {
+    transform: scale(0.95);
+}
+```
+
+---
+
+## 七、性能优化
+
+### 1. 避免在动画循环中创建对象
+
+```javascript
+// 错误：每帧创建新对象
+function draw() {
+    const gradient = ctx.createRadialGradient(...); // 每帧创建 ❌
+}
+
+// 正确：复用或在需要时才创建
+function drawKeyPoint(pos, color) {
+    // RadialGradient 位置依赖于点位置，必须创建，但这是必要的
+    const gradient = ctx.createRadialGradient(pos.x, pos.y, 2, pos.x, pos.y, 15);
+    // ...
+}
+```
+
+### 2. 批量绘制同类元素
+
+```javascript
+// 绘制所有网格线（一次 stroke）
+ctx.beginPath();
+for (let i = 0; i <= width; i += step) {
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, height);
+}
+for (let i = 0; i <= height; i += step) {
+    ctx.moveTo(0, i);
+    ctx.lineTo(width, i);
+}
+ctx.stroke();  // 只调用一次
+```
+
+---
+
+## 八、动画的教学意义
+
+动画必须服务于教学目的：
+
+1. **展示数学关系**：如拋物线上的点到焦点和准线距离相等
+2. **揭示变化规律**：如参数变化如何影响图形
+3. **加深理解**：通过动态演示帮助学生直观理解抽象概念

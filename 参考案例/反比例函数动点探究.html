@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>反比例函数动点探究</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Microsoft YaHei', sans-serif; }
+        /* 隐藏滚动条让画布区更干净 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-[#F5F7FB] text-gray-800 min-h-screen flex flex-col overflow-x-hidden">
+
+    <!-- 顶栏 -->
+    <header class="w-full bg-white shadow-sm px-6 py-4 flex items-center justify-between z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-[#4285F4] rounded-xl flex items-center justify-center text-white text-xl shadow-md">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800 tracking-wide">反比例函数动点探究</h1>
+        </div>
+        <div class="hidden md:flex items-center gap-2 text-gray-500 text-sm bg-gray-50 px-3 py-1.5 rounded-full">
+            <i class="fas fa-info-circle text-[#FBBC05]"></i> 专为课堂演示与平板互动设计
+        </div>
+    </header>
+
+    <!-- 主体内容区 -->
+    <main class="flex-1 w-full max-w-[1400px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左侧：题目与解析面板 -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- 原题展示卡片 -->
+            <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-[#4285F4]">
+                <h2 class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+                    <i class="fas fa-book-open text-[#4285F4]"></i> 原题展示
+                </h2>
+                <p class="text-gray-800 text-[17px] leading-relaxed mb-5">
+                    反比例函数 <span class="bg-blue-50 px-2 py-0.5 rounded text-[#4285F4] font-bold italic">y = 4 / x</span> 的图象上有 
+                    <span class="bg-red-50 px-2 py-0.5 rounded text-[#EA4335] font-bold italic">P(t, y₁)</span>，
+                    <span class="bg-green-50 px-2 py-0.5 rounded text-[#34A853] font-bold italic">Q(t+4, y₂)</span> 两点。下列说法正确的是：
+                </p>
+                <div class="flex flex-col gap-3" id="options-container">
+                    <div id="opt-A" class="flex justify-between items-center p-3 rounded-xl border-2 border-transparent bg-gray-50 transition-all duration-300">
+                        <span class="font-medium text-[16px]">A. 当 t < -4 时，y₂ < y₁ < 0</span>
+                        <span class="status-badge text-sm font-bold"></span>
+                    </div>
+                    <div id="opt-B" class="flex justify-between items-center p-3 rounded-xl border-2 border-transparent bg-gray-50 transition-all duration-300">
+                        <span class="font-medium text-[16px]">B. 当 -4 < t < 0 时，y₂ < y₁ < 0</span>
+                        <span class="status-badge text-sm font-bold"></span>
+                    </div>
+                    <div id="opt-C" class="flex justify-between items-center p-3 rounded-xl border-2 border-transparent bg-gray-50 transition-all duration-300">
+                        <span class="font-medium text-[16px]">C. 当 -4 < t < 0 时，0 < y₁ < y₂</span>
+                        <span class="status-badge text-sm font-bold"></span>
+                    </div>
+                    <div id="opt-D" class="flex justify-between items-center p-3 rounded-xl border-2 border-transparent bg-gray-50 transition-all duration-300">
+                        <span class="font-medium text-[16px]">D. 当 t > 0 时，0 < y₁ < y₂</span>
+                        <span class="status-badge text-sm font-bold"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 实时探究卡片 -->
+            <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-[#FBBC05] flex-1">
+                <h2 class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+                    <i class="fas fa-search text-[#FBBC05]"></i> 实时数据与推导
+                </h2>
+                <div id="result-text" class="text-gray-700 text-[17px] leading-loose bg-amber-50/50 p-5 rounded-xl border border-amber-100 h-[180px] flex flex-col justify-center">
+                    <!-- JS动态填充 -->
+                </div>
+            </div>
+            
+        </div>
+
+        <!-- 右侧：互动绘图区 -->
+        <div class="lg:col-span-7 bg-white rounded-2xl shadow-md p-5 flex flex-col relative h-[600px] lg:h-auto">
+            
+            <div class="absolute top-8 right-8 bg-white/90 backdrop-blur px-3 py-1.5 rounded-full shadow-sm text-sm text-gray-500 flex items-center pointer-events-none z-10 border border-gray-100">
+                <i class="fas fa-hand-pointer mr-2 text-[#4285F4]"></i> 可直接拖动 P 点
+            </div>
+
+            <!-- Canvas 容器 -->
+            <div id="canvas-container" class="flex-1 w-full relative rounded-xl overflow-hidden bg-[#FAFAF5]">
+                <canvas id="plotCanvas" class="absolute top-0 left-0 w-full h-full cursor-pointer touch-none"></canvas>
+            </div>
+
+            <!-- 底部滑块控制区 -->
+            <div class="mt-5 bg-gray-50 p-5 rounded-xl border border-gray-200">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-gray-700 font-bold"><i class="fas fa-sliders-h mr-2 text-[#4285F4]"></i>滑动改变 t 的值</span>
+                    <span class="bg-[#4285F4]/10 text-[#4285F4] px-4 py-1.5 rounded-full font-bold text-base shadow-sm" id="t-badge">t = -6.0</span>
+                </div>
+                <input type="range" id="t-slider" min="-9" max="6" step="0.1" value="-6" 
+                       class="w-full h-3 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-[#4285F4]">
+                <div class="flex justify-between text-sm text-gray-400 mt-2 font-mono font-bold px-1">
+                    <span>-9</span>
+                    <span>0</span>
+                    <span>6</span>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- 状态管理 ---
+        let t = -6; // 初始 t 值
+        const xMin = -10, xMax = 10;
+        const yMin = -10, yMax = 10;
+        
+        // --- DOM 与 Canvas 准备 ---
+        const canvas = document.getElementById('plotCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const slider = document.getElementById('t-slider');
+        const tBadge = document.getElementById('t-badge');
+        const resultText = document.getElementById('result-text');
+        let canvasW, canvasH;
+
+        // --- 坐标系转换 ---
+        function toPixel(lx, ly) {
+            const px = (lx - xMin) / (xMax - xMin) * canvasW;
+            const py = canvasH - (ly - yMin) / (yMax - yMin) * canvasH;
+            return { px, py };
+        }
+
+        function toLogical(px, py) {
+            const lx = px / canvasW * (xMax - xMin) + xMin;
+            const ly = yMin + (canvasH - py) / canvasH * (yMax - yMin);
+            return { lx, ly };
+        }
+
+        // --- 调整 Canvas 尺寸（高清适配） ---
+        function resizeCanvas() {
+            canvasW = container.clientWidth;
+            canvasH = container.clientHeight;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = canvasW * dpr;
+            canvas.height = canvasH * dpr;
+            ctx.scale(dpr, dpr);
+            draw();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // --- 核心更新逻辑 ---
+        function setT(newT) {
+            // 限制范围在 -9 到 6 之间
+            if (newT > 6) newT = 6;
+            if (newT < -9) newT = -9;
+            
+            // 避开奇点：t=0 和 t=-4 (因反比例函数 x≠0)
+            if (Math.abs(newT) < 0.1) newT = newT >= 0 ? 0.1 : -0.1;
+            if (Math.abs(newT + 4) < 0.1) newT = newT >= -4 ? -3.9 : -4.1;
+            
+            t = newT;
+            slider.value = t;
+            tBadge.innerText = `t = ${t.toFixed(1)}`;
+            
+            updateUI();
+            draw();
+        }
+
+        slider.addEventListener('input', (e) => setT(parseFloat(e.target.value)));
+
+        // --- 选项状态与解析文字更新 ---
+        function updateUI() {
+            let y1 = 4 / t;
+            let y2 = 4 / (t + 4);
+
+            // 重置所有选项样式
+            const opts = ['A', 'B', 'C', 'D'];
+            opts.forEach(opt => {
+                const el = document.getElementById(`opt-${opt}`);
+                el.className = "flex justify-between items-center p-3 rounded-xl border-2 border-transparent bg-gray-50 transition-all duration-300";
+                el.querySelector('.status-badge').innerHTML = "";
+            });
+
+            // 判断区间并高亮
+            if (t < -4) {
+                const el = document.getElementById('opt-A');
+                el.className = "flex justify-between items-center p-3 rounded-xl border-2 border-[#34A853] bg-[#34A853]/10 text-[#2d9047] shadow-sm transition-all duration-300 transform scale-[1.02]";
+                el.querySelector('.status-badge').innerHTML = '<i class="fas fa-check-circle"></i> 区间匹配，结论正确！';
+            } else if (t > -4 && t < 0) {
+                ['B', 'C'].forEach(opt => {
+                    const el = document.getElementById(`opt-${opt}`);
+                    el.className = "flex justify-between items-center p-3 rounded-xl border-2 border-[#EA4335] bg-[#EA4335]/10 text-[#d93025] transition-all duration-300";
+                    el.querySelector('.status-badge').innerHTML = '<i class="fas fa-times-circle"></i> 区间匹配，但结论错误';
+                });
+            } else if (t > 0) {
+                const el = document.getElementById('opt-D');
+                el.className = "flex justify-between items-center p-3 rounded-xl border-2 border-[#EA4335] bg-[#EA4335]/10 text-[#d93025] transition-all duration-300";
+                el.querySelector('.status-badge').innerHTML = '<i class="fas fa-times-circle"></i> 区间匹配，但结论错误';
+            }
+
+            // 更新推导文字
+            let analysis = `当前拖动设定 <span class="font-bold text-[#4285F4] text-xl">t = ${t.toFixed(1)}</span>，则横坐标 <span class="font-bold text-[#4285F4] text-xl">t+4 = ${(t+4).toFixed(1)}</span>。<br>`;
+            analysis += `点 P 坐标计算为 <span class="text-[#EA4335] font-bold text-xl">(${t.toFixed(1)}, ${y1.toFixed(2)})</span>。<br>`;
+            analysis += `点 Q 坐标计算为 <span class="text-[#34A853] font-bold text-xl">(${(t+4).toFixed(1)}, ${y2.toFixed(2)})</span>。<br><br>`;
+
+            if (y1 < 0 && y2 < 0) {
+                analysis += `由图可直观看出：<span class="font-bold text-[#b08b12] bg-[#FBBC05]/20 px-3 py-1 rounded-lg shadow-sm text-xl">y₂ < y₁ < 0</span>`;
+            } else if (y1 > 0 && y2 > 0) {
+                analysis += `由图可直观看出：<span class="font-bold text-[#b08b12] bg-[#FBBC05]/20 px-3 py-1 rounded-lg shadow-sm text-xl">${y1 < y2 ? '0 < y₁ < y₂' : '0 < y₂ < y₁'}</span>`;
+            } else if (y1 < 0 && y2 > 0) {
+                analysis += `由图可直观看出：<span class="font-bold text-[#b08b12] bg-[#FBBC05]/20 px-3 py-1 rounded-lg shadow-sm text-xl">y₁ < 0 < y₂</span>`;
+            } else if (y1 > 0 && y2 < 0) {
+                analysis += `由图可直观看出：<span class="font-bold text-[#b08b12] bg-[#FBBC05]/20 px-3 py-1 rounded-lg shadow-sm text-xl">y₂ < 0 < y₁</span>`;
+            }
+            resultText.innerHTML = analysis;
+        }
+
+        // --- 绘图逻辑 ---
+        function draw() {
+            ctx.clearRect(0, 0, canvasW, canvasH);
+            
+            // 1. 画网格
+            ctx.strokeStyle = '#E5E7EB'; // 浅灰网格
+            ctx.lineWidth = 1;
+            for(let i = xMin; i <= xMax; i++) {
+                let p1 = toPixel(i, yMin), p2 = toPixel(i, yMax);
+                ctx.beginPath(); ctx.moveTo(p1.px, p1.py); ctx.lineTo(p2.px, p2.py); ctx.stroke();
+            }
+            for(let i = yMin; i <= yMax; i++) {
+                let p1 = toPixel(xMin, i), p2 = toPixel(xMax, i);
+                ctx.beginPath(); ctx.moveTo(p1.px, p1.py); ctx.lineTo(p2.px, p2.py); ctx.stroke();
+            }
+
+            // 2. 画坐标轴
+            ctx.strokeStyle = '#4B5563';
+            ctx.fillStyle = '#4B5563';
+            ctx.lineWidth = 2;
+            ctx.font = 'bold 16px "Microsoft YaHei", sans-serif';
+            // X轴
+            let x0 = toPixel(xMin, 0), x1 = toPixel(xMax, 0);
+            ctx.beginPath(); ctx.moveTo(x0.px, x0.py); ctx.lineTo(x1.px, x1.py); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x1.px, x1.py); ctx.lineTo(x1.px - 12, x1.py - 6); ctx.lineTo(x1.px - 12, x1.py + 6); ctx.fill();
+            ctx.fillText('x', x1.px - 20, x1.py + 20);
+            // Y轴
+            let y0 = toPixel(0, yMin), y_max = toPixel(0, yMax);
+            ctx.beginPath(); ctx.moveTo(y0.px, y0.py); ctx.lineTo(y_max.px, y_max.py); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(y_max.px, y_max.py); ctx.lineTo(y_max.px - 6, y_max.py + 12); ctx.lineTo(y_max.px + 6, y_max.py + 12); ctx.fill();
+            ctx.fillText('y', y_max.px + 12, y_max.py + 20);
+            ctx.fillText('O', toPixel(0,0).px - 20, toPixel(0,0).py + 20);
+
+            // 3. 画反比例函数 y = 4/x 曲线
+            ctx.strokeStyle = '#4285F4'; // 主教育蓝
+            ctx.lineWidth = 3;
+            // 左支
+            ctx.beginPath();
+            let started = false;
+            for(let x = xMin; x <= -0.05; x += 0.05) {
+                let y = 4/x;
+                if(y >= yMin && y <= yMax) {
+                    let p = toPixel(x, y);
+                    if(!started) { ctx.moveTo(p.px, p.py); started = true; }
+                    else ctx.lineTo(p.px, p.py);
+                } else started = false;
+            }
+            ctx.stroke();
+            // 右支
+            ctx.beginPath();
+            started = false;
+            for(let x = 0.05; x <= xMax; x += 0.05) {
+                let y = 4/x;
+                if(y >= yMin && y <= yMax) {
+                    let p = toPixel(x, y);
+                    if(!started) { ctx.moveTo(p.px, p.py); started = true; }
+                    else ctx.lineTo(p.px, p.py);
+                } else started = false;
+            }
+            ctx.stroke();
+
+            // 4. 画动点 P 和 Q 及辅助线
+            drawPoint(t, 4/t, '#EA4335', `P(t, y₁)`);
+            drawPoint(t+4, 4/(t+4), '#34A853', `Q(t+4, y₂)`);
+        }
+
+        // 绘制单点与辅助虚线的通用函数
+        function drawPoint(lx, ly, color, label) {
+            let p = toPixel(lx, ly);
+            
+            // 画虚线辅助线
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([5, 5]);
+            let px_x = toPixel(lx, 0);
+            ctx.beginPath(); ctx.moveTo(p.px, p.py); ctx.lineTo(px_x.px, px_x.py); ctx.stroke();
+            let py_y = toPixel(0, ly);
+            ctx.beginPath(); ctx.moveTo(p.px, p.py); ctx.lineTo(py_y.px, py_y.py); ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // 画大圆点
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(p.px, p.py, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // 画高亮背景框和文本
+            ctx.font = 'bold 15px "Microsoft YaHei", sans-serif';
+            let textW = ctx.measureText(label).width;
+            let textX = lx > 5 ? p.px - textW - 12 : p.px + 12; // 靠边缘时防越界
+            let textY = ly > 0 ? p.py - 10 : p.py + 25;
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.beginPath();
+            ctx.roundRect(textX - 4, textY - 15, textW + 8, 22, 4);
+            ctx.fill();
+
+            ctx.fillStyle = color;
+            ctx.fillText(label, textX, textY);
+        }
+
+        // --- 触控与鼠标拖动事件绑定 ---
+        let isDragging = false;
+
+        function getEventPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            if(e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+            } else {
+                return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            }
+        }
+
+        function onDown(e) {
+            const pos = getEventPos(e);
+            const {lx} = toLogical(pos.x, pos.y);
+            // 扩大抓取判定范围，方便平板用户点击
+            if (Math.abs(lx - t) < 1.5) { 
+                isDragging = true;
+                if(e.type === 'touchstart') e.preventDefault(); // 防止屏幕整体滑动
+            }
+        }
+
+        function onMove(e) {
+            if(!isDragging) return;
+            const pos = getEventPos(e);
+            const {lx} = toLogical(pos.x, pos.y);
+            setT(lx);
+            if(e.type === 'touchmove') e.preventDefault();
+        }
+
+        function onUp() {
+            isDragging = false;
+        }
+
+        // 鼠标事件
+        canvas.addEventListener('mousedown', onDown);
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        // 触屏事件
+        canvas.addEventListener('touchstart', onDown, {passive: false});
+        window.addEventListener('touchmove', onMove, {passive: false});
+        window.addEventListener('touchend', onUp);
+
+        // --- 初始化启动 ---
+        setTimeout(() => {
+            resizeCanvas();
+            setT(-6);
+        }, 100);
+
+    </script>
+</body>
+</html>

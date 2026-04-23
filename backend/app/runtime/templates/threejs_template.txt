@@ -1,0 +1,467 @@
+## Three.js 3D 场景架构参考
+
+这是 Three.js 3D 交互式教学场景的参考架构。适用于：立体几何、空间向量、分子结构等3D可视化场景。
+
+---
+
+## ⚠️ Three.js 3D容器关键CSS规范（严格遵守）
+
+### 容器高度保障（最常见的致命Bug）
+1. 3D场景容器（如 #scene-container）**绝对不能**在自定义CSS的ID选择器中写 `position: relative`，
+   因为它会覆盖Tailwind的 `absolute` 类，导致 `inset-0` 失效，容器高度塌陷为0
+2. 正确做法二选一：
+   - 方案A（推荐）：容器使用 Tailwind 的 `absolute inset-0`，自定义CSS中**不写** position 属性
+   - 方案B：如果需要自定义CSS控制position，必须同时显式指定 `width: 100%; height: 100%;`
+3. JS中初始化renderer前，必须检查容器尺寸：
+   ```javascript
+   const w = container.clientWidth || container.offsetWidth || 800;
+   const h = container.clientHeight || container.offsetHeight || 600;
+   // 如果容器高度仍为0，强制设置
+   if (h <= 0) {
+       container.style.height = '100%';
+       // 如果父元素也没高度，使用视口高度
+       if (container.clientHeight <= 0) {
+           container.style.height = '60vh';
+       }
+   }
+   ```
+4. resize事件处理中同样需要高度检查
+
+### CSS优先级规则
+- **严禁**在 `<style>` 中用ID选择器（如 `#scene-container`）覆盖Tailwind的定位类
+- 如果必须用ID选择器写CSS，**绝对不要写** `position`、`top`、`left`、`right`、`bottom`、`inset` 等定位属性
+- 自定义CSS只负责：`overflow: hidden`、`touch-action: none`、`cursor` 等非定位属性
+
+---
+
+## ⚠️ MathJax 异步加载安全规范（严格遵守）
+
+1. MathJax 脚本必须用 async 加载，但这意味着页面初始化时 MathJax 可能尚未就绪
+2. `window.MathJax` 配置对象会在脚本加载前就存在（因为是手动定义的），所以**严禁**仅判断 `window.MathJax`
+3. 调用 `MathJax.typesetPromise()` 或 `MathJax.typeset()` 前，**必须**检查函数是否存在：
+   ```javascript
+   // ✅ 正确写法
+   if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+       MathJax.typesetPromise();
+   }
+   
+   // ❌ 错误写法（会导致运行时错误，阻塞整个页面包括Three.js的animate循环）
+   if (window.MathJax) MathJax.typesetPromise();
+   ```
+4. 此规则对所有使用MathJax的页面生效，不仅限于Three.js页面
+
+---
+
+### 推荐布局：左3D场景 + 右步骤面板
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【主题】- 3D交互教学</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; margin: 0; }
+        .glass-card { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-radius: 1rem; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+        .step-card { transition: all 0.3s ease; border-left: 4px solid transparent; }
+        .step-card.active { border-left-color: #3b82f6; background: #eff6ff; }
+        .step-card.completed { border-left-color: #10b981; }
+        /* 注意：容器定位由Tailwind的absolute inset-0控制，此处严禁写position属性 */
+        #scene-container { overflow: hidden; touch-action: none; }
+        .scene-label { position: absolute; color: white; font-size: 14px; font-weight: bold; text-shadow: 0 0 4px black; pointer-events: none; transform: translate(-50%, -50%); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- 标题 -->
+        <header class="glass-card p-6 mb-6">
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                <i class="fas fa-cube text-blue-500"></i>
+                【主题名称】
+            </h1>
+            <p class="text-gray-600 mt-2">3D交互式几何教学 - 拖拽旋转，滚轮缩放</p>
+        </header>
+        
+        <!-- 主体：左3D + 右面板 -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- 左侧 3D 场景 (占2列) -->
+            <div class="lg:col-span-2 glass-card p-4">
+                <!-- 容器必须使用relative定位，子元素用absolute inset-0 -->
+                <div class="relative w-full bg-gradient-to-b from-slate-800 to-slate-900 rounded-lg" style="aspect-ratio: 4/3;">
+                    <div id="scene-container" class="absolute inset-0">
+                        <!-- Three.js 渲染到这里 -->
+                        <!-- 顶点标签会动态添加 -->
+                    </div>
+                </div>
+                
+                <!-- 视角控制按钮 -->
+                <div class="flex gap-2 mt-4 justify-center">
+                    <button onclick="setView('front')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">
+                        <i class="fas fa-arrow-up mr-1"></i>正视图
+                    </button>
+                    <button onclick="setView('top')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">
+                        <i class="fas fa-arrow-down mr-1"></i>俯视图
+                    </button>
+                    <button onclick="setView('side')" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm">
+                        <i class="fas fa-arrow-right mr-1"></i>侧视图
+                    </button>
+                    <button onclick="setView('iso')" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm">
+                        <i class="fas fa-cube mr-1"></i>立体视图
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 右侧步骤面板 -->
+            <div class="glass-card p-6 overflow-y-auto max-h-[600px]">
+                <h2 class="text-lg font-semibold text-gray-800 border-b pb-2 mb-4">
+                    <i class="fas fa-list-ol mr-2 text-blue-500"></i>解题步骤
+                </h2>
+                
+                <div id="steps-container" class="space-y-4">
+                    <!-- 步骤卡片 -->
+                    <div class="step-card p-4 bg-gray-50 rounded-lg cursor-pointer" data-step="1" onclick="goToStep(1)">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                            <div>
+                                <h3 class="font-semibold text-gray-800">建立坐标系</h3>
+                                <p class="text-sm text-gray-600">以底面中心为原点建立空间直角坐标系</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-card p-4 bg-gray-50 rounded-lg cursor-pointer" data-step="2" onclick="goToStep(2)">
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                            <div>
+                                <h3 class="font-semibold text-gray-800">确定顶点坐标</h3>
+                                <p class="text-sm text-gray-600">计算各顶点的空间坐标</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 更多步骤... -->
+                </div>
+                
+                <!-- 步骤导航 -->
+                <div class="flex gap-2 mt-6">
+                    <button onclick="prevStep()" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg">
+                        <i class="fas fa-chevron-left mr-1"></i>上一步
+                    </button>
+                    <button onclick="nextStep()" class="flex-1 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg">
+                        下一步<i class="fas fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ========== Three.js 基础设置 ==========
+        let scene, camera, renderer, controls;
+        let container;
+        
+        // ========== 几何对象 ==========
+        let meshes = {};      // 存储所有网格
+        let edges = {};       // 存储边框线
+        let labels = {};      // 存储标签DOM元素
+        let helpers = {};     // 存储辅助元素(坐标轴、平面等)
+        
+        // ========== 状态 ==========
+        let currentStep = 1;
+        const totalSteps = 5;
+        
+        // ========== 顶点数据 (数学坐标系: Z轴朝上) ==========
+        const vertices = {
+            // 示例: 正四面体顶点
+            A: new THREE.Vector3(0, 0, 0),
+            B: new THREE.Vector3(2, 0, 0),
+            C: new THREE.Vector3(1, Math.sqrt(3), 0),
+            D: new THREE.Vector3(1, Math.sqrt(3)/3, Math.sqrt(6)*2/3),
+        };
+        
+        // ========== 初始化场景 ==========
+        function initScene() {
+            container = document.getElementById('scene-container');
+            
+            // ⚠️ 容器尺寸检查（防止高度塌陷为0导致空白）
+            let width = container.clientWidth || container.offsetWidth || 800;
+            let height = container.clientHeight || container.offsetHeight || 600;
+            
+            // 如果容器高度仍为0，强制设置
+            if (height <= 0) {
+                container.style.height = '100%';
+                height = container.clientHeight;
+                // 如果父元素也没高度，使用视口高度
+                if (height <= 0) {
+                    container.style.height = '60vh';
+                    height = container.clientHeight || 400;
+                }
+            }
+            if (width <= 0) {
+                container.style.width = '100%';
+                width = container.clientWidth || 800;
+            }
+            
+            // 场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            
+            // 相机 (注意: 数学坐标系Z轴朝上)
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(8, -8, 6);
+            camera.up.set(0, 0, 1);  // 重要: Z轴朝上
+            camera.lookAt(0, 0, 0);
+            
+            // 渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+            
+            // 轨道控制器
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(0, 0, 0);
+            
+            // 灯光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 5, 10);
+            scene.add(directionalLight);
+            
+            // 创建几何体
+            createGeometry();
+            
+            // 创建坐标轴
+            createAxes();
+            
+            // 创建顶点标签
+            createLabels();
+            
+            // 开始渲染循环
+            animate();
+        }
+        
+        // ========== 创建几何体 ==========
+        function createGeometry() {
+            // 创建面 (半透明)
+            const faceMaterial = new THREE.MeshPhongMaterial({
+                color: 0x3B82F6,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.DoubleSide
+            });
+            
+            // 示例: 创建三角形面
+            // const geometry = new THREE.BufferGeometry();
+            // const positions = new Float32Array([...]);
+            // geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            // 创建边框线
+            const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x1E3A5F, linewidth: 2 });
+            
+            // 示例: 创建边
+            // const edgeGeometry = new THREE.BufferGeometry().setFromPoints([vertices.A, vertices.B]);
+            // const edge = new THREE.Line(edgeGeometry, edgeMaterial);
+            // scene.add(edge);
+        }
+        
+        // ========== 创建坐标轴 ==========
+        function createAxes() {
+            const axesLength = 4;
+            const axesMaterial = {
+                x: new THREE.LineBasicMaterial({ color: 0xff4444 }),
+                y: new THREE.LineBasicMaterial({ color: 0x44ff44 }),
+                z: new THREE.LineBasicMaterial({ color: 0x4444ff })
+            };
+            
+            // X轴
+            const xGeom = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(axesLength, 0, 0)
+            ]);
+            helpers.xAxis = new THREE.Line(xGeom, axesMaterial.x);
+            scene.add(helpers.xAxis);
+            
+            // Y轴
+            const yGeom = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, axesLength, 0)
+            ]);
+            helpers.yAxis = new THREE.Line(yGeom, axesMaterial.y);
+            scene.add(helpers.yAxis);
+            
+            // Z轴
+            const zGeom = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, axesLength)
+            ]);
+            helpers.zAxis = new THREE.Line(zGeom, axesMaterial.z);
+            scene.add(helpers.zAxis);
+        }
+        
+        // ========== 创建顶点标签 ==========
+        function createLabels() {
+            Object.entries(vertices).forEach(([name, pos]) => {
+                const label = document.createElement('div');
+                label.className = 'scene-label';
+                label.textContent = name;
+                container.appendChild(label);
+                labels[name] = { element: label, position: pos };
+            });
+        }
+        
+        // ========== 更新标签位置 ==========
+        function updateLabels() {
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            Object.values(labels).forEach(label => {
+                const pos = label.position.clone();
+                pos.project(camera);
+                
+                const x = (pos.x * 0.5 + 0.5) * width;
+                const y = (-pos.y * 0.5 + 0.5) * height;
+                
+                label.element.style.left = x + 'px';
+                label.element.style.top = y + 'px';
+                label.element.style.display = pos.z < 1 ? 'block' : 'none';
+            });
+        }
+        
+        // ========== 视角控制 ==========
+        function setView(viewName) {
+            const duration = 500;
+            let targetPosition;
+            
+            switch(viewName) {
+                case 'front':
+                    targetPosition = { x: 0, y: -12, z: 2 };
+                    break;
+                case 'top':
+                    targetPosition = { x: 0, y: 0, z: 15 };
+                    break;
+                case 'side':
+                    targetPosition = { x: 12, y: 0, z: 2 };
+                    break;
+                case 'iso':
+                default:
+                    targetPosition = { x: 8, y: -8, z: 6 };
+            }
+            
+            // 简单动画过渡
+            const startPosition = { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+            const startTime = Date.now();
+            
+            function animateCamera() {
+                const elapsed = Date.now() - startTime;
+                const t = Math.min(elapsed / duration, 1);
+                const easeT = t * (2 - t); // ease-out
+                
+                camera.position.x = startPosition.x + (targetPosition.x - startPosition.x) * easeT;
+                camera.position.y = startPosition.y + (targetPosition.y - startPosition.y) * easeT;
+                camera.position.z = startPosition.z + (targetPosition.z - startPosition.z) * easeT;
+                
+                if (t < 1) requestAnimationFrame(animateCamera);
+            }
+            animateCamera();
+        }
+        
+        // ========== 步骤控制 ==========
+        function goToStep(step) {
+            currentStep = step;
+            updateStepUI();
+            updateSceneForStep(step);
+        }
+        
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                goToStep(currentStep + 1);
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                goToStep(currentStep - 1);
+            }
+        }
+        
+        function updateStepUI() {
+            document.querySelectorAll('.step-card').forEach((card, index) => {
+                const stepNum = index + 1;
+                card.classList.remove('active', 'completed');
+                if (stepNum === currentStep) {
+                    card.classList.add('active');
+                } else if (stepNum < currentStep) {
+                    card.classList.add('completed');
+                }
+                // 更新数字圆圈样式
+                const circle = card.querySelector('span');
+                if (stepNum <= currentStep) {
+                    circle.className = 'w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold';
+                } else {
+                    circle.className = 'w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-bold';
+                }
+            });
+        }
+        
+        function updateSceneForStep(step) {
+            // 根据步骤显示/隐藏不同元素
+            // 例如: 步骤1显示坐标轴, 步骤2显示顶点坐标等
+        }
+        
+        // ========== 渲染循环 ==========
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            updateLabels();
+            renderer.render(scene, camera);
+        }
+        
+        // ========== 窗口调整 ==========
+        window.addEventListener('resize', () => {
+            // ⚠️ 同样需要容器尺寸检查
+            let width = container.clientWidth || container.offsetWidth;
+            let height = container.clientHeight || container.offsetHeight;
+            
+            if (height <= 0) {
+                container.style.height = '100%';
+                height = container.clientHeight;
+                if (height <= 0) {
+                    container.style.height = '60vh';
+                    height = container.clientHeight || 400;
+                }
+            }
+            if (width <= 0) {
+                container.style.width = '100%';
+                width = container.clientWidth || 800;
+            }
+            
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+        
+        // ========== 启动 ==========
+        document.addEventListener('DOMContentLoaded', initScene);
+    </script>
+</body>
+</html>
+```
+
+### Three.js 3D 场景关键技术点
+
+1. **坐标系**: 数学坐标系 Z轴朝上，设置 `camera.up.set(0, 0, 1)`
+2. **轨道控制**: OrbitControls 实现拖拽旋转、滚轮缩放
+3. **标签叠加**: 使用 DOM 元素 + `vector.project(camera)` 计算屏幕位置
+4. **半透明面**: `MeshPhongMaterial` + `transparent: true` + `opacity: 0.3`
+5. **视角切换**: 相机位置动画过渡
+6. **步骤联动**: 步骤切换时显示/隐藏相关3D元素

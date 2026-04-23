@@ -1,0 +1,287 @@
+/*我给的题目是探究f(x)=e^{(-(x-a)^2/b)}函数*/
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高斯函数互动探索室</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- 引入 Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* 自定义字体，优先使用系统默认无衬线字体 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+            background-color: #F5F7FB; /* 护眼浅蓝灰背景 */
+        }
+
+        /* 自定义滑动条样式以适应教育场景（大号、显眼） */
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;  /* 添加标准属性 */
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid currentcolor;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #E2E8F0;
+            border-radius: 4px;
+        }
+        /* 滑动条颜色主题 */
+        .slider-a::-webkit-slider-thumb { border-color: #4285F4; } /* 蓝色 */
+        .slider-b::-webkit-slider-thumb { border-color: #34A853; } /* 绿色 */
+
+        /* 隐藏滚动条 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 p-4 md:p-8 flex flex-col items-center">
+
+    <!-- 顶部标题与公式区 -->
+    <header class="w-full max-w-6xl mb-6">
+        <div class="bg-white rounded-2xl shadow-md p-6 flex flex-col md:flex-row items-center justify-between border-t-4 border-[#4285F4]">
+            <div class="flex items-center gap-4 mb-4 md:mb-0">
+                <div class="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center overflow-hidden shrink-0 shadow-inner">
+                    <img src="https://api.zcat.cn/udata/718570/png/8f7533af81a776657c2c51e94c661b9f.png" alt="数学图标" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-slate-800">高斯函数探索室</h1>
+                    <p class="text-slate-500 mt-1"><i class="fa-solid fa-lightbulb text-[#FBBC05] mr-1"></i> 拖动滑块，观察参数如何改变曲线的形状</p>
+                </div>
+            </div>
+            
+            <!-- 公式展示卡片 -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl px-6 py-4 flex items-center justify-center shadow-inner">
+                <span class="text-2xl md:text-3xl font-serif text-slate-700">
+                    <span class="italic font-bold">f(x)</span> = <span class="text-[#EA4335]">e</span><sup class="text-lg text-slate-600">-(x-<span class="text-[#4285F4] font-bold">a</span>)<sup>2</sup> / <span class="text-[#34A853] font-bold">b</span></sup>
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要互动区 -->
+    <main class="w-full max-w-6xl flex flex-col lg:flex-row gap-6 h-full flex-grow">
+        
+        <!-- 左侧：控制面板 -->
+        <div class="w-full lg:w-1/3 flex flex-col gap-6">
+            
+            <!-- 控制卡片 a -->
+            <div class="bg-white rounded-2xl shadow-md p-6 border-l-4 border-[#4285F4] hover:shadow-lg transition-shadow">
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-arrows-left-right text-[#4285F4]"></i>
+                            参数 <span class="text-2xl text-[#4285F4] font-serif ml-1">a</span>
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-1">控制中心位置 (平移)</p>
+                    </div>
+                    <div class="bg-blue-50 text-[#4285F4] px-4 py-1 rounded-lg font-mono text-xl font-bold shadow-inner w-20 text-center" id="val-a">
+                        0.0
+                    </div>
+                </div>
+                <input type="range" id="slider-a" class="slider-a text-[#4285F4]" min="-8" max="8" step="0.1" value="0">
+                <div class="flex justify-between text-xs text-slate-400 mt-2 font-mono">
+                    <span>-8</span><span>0</span><span>8</span>
+                </div>
+            </div>
+
+            <!-- 控制卡片 b -->
+            <div class="bg-white rounded-2xl shadow-md p-6 border-l-4 border-[#34A853] hover:shadow-lg transition-shadow">
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-compress-arrows-alt text-[#34A853]"></i>
+                            参数 <span class="text-2xl text-[#34A853] font-serif ml-1">b</span>
+                        </h2>
+                        <p class="text-sm text-slate-500 mt-1">控制曲线宽度 (展缩)</p>
+                    </div>
+                    <div class="bg-green-50 text-[#34A853] px-4 py-1 rounded-lg font-mono text-xl font-bold shadow-inner w-20 text-center" id="val-b">
+                        2.0
+                    </div>
+                </div>
+                <input type="range" id="slider-b" class="slider-b text-[#34A853]" min="0.1" max="10" step="0.1" value="2">
+                <div class="flex justify-between text-xs text-slate-400 mt-2 font-mono">
+                    <span>0.1 (尖锐)</span><span>10 (平缓)</span>
+                </div>
+            </div>
+
+            <!-- 实时反馈面板 -->
+            <div class="bg-[#FFF8E1] rounded-2xl shadow-md p-6 border-t-4 border-[#FBBC05] flex-grow">
+                <h3 class="text-slate-800 font-bold mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-microscope text-[#FBBC05]"></i> 观察结论
+                </h3>
+                <ul class="space-y-3 text-slate-700 text-sm leading-relaxed">
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check-circle text-green-500 mt-0.5"></i>
+                        <span>当前曲线的最高峰（对称轴）位于 <strong>x = <span id="obs-a" class="text-[#4285F4] font-bold">0</span></strong> 处。</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check-circle text-green-500 mt-0.5"></i>
+                        <span>目前曲线形态呈现 <strong><span id="obs-b" class="text-[#34A853] font-bold">标准钟形</span></strong>。</span>
+                    </li>
+                    <li class="flex items-start gap-2 text-slate-500">
+                        <i class="fa-solid fa-info-circle text-blue-400 mt-0.5"></i>
+                        <span>注意：无论参数怎么变，最高点的 y 值始终为 1。</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 右侧：图表可视化区 -->
+        <div class="w-full lg:w-2/3 bg-white rounded-2xl shadow-lg p-4 md:p-6 flex flex-col relative">
+            <h2 class="text-lg font-bold text-slate-700 mb-4 text-center">函数图像可视化</h2>
+            <div class="flex-grow relative w-full min-h-[400px]">
+                <!-- Chart.js Canvas -->
+                <canvas id="mathChart"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 等待DOM加载完成
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. 获取DOM元素
+            const sliderA = document.getElementById('slider-a');
+            const sliderB = document.getElementById('slider-b');
+            const valA = document.getElementById('val-a');
+            const valB = document.getElementById('val-b');
+            const obsA = document.getElementById('obs-a');
+            const obsB = document.getElementById('obs-b');
+            const ctx = document.getElementById('mathChart').getContext('2d');
+
+            // 2. 生成X轴数据点 (范围 -10 到 10)
+            const xValues = [];
+            for (let x = -10; x <= 10; x += 0.1) {
+                xValues.push(parseFloat(x.toFixed(1))); // 修复浮点数精度
+            }
+
+            // 3. 计算Y轴数据点的函数 f(x) = e^(-(x-a)^2/b)
+            function calculateY(xArr, a, b) {
+                return xArr.map(x => Math.exp(-Math.pow(x - a, 2) / b));
+            }
+
+            // 4. 初始化图表
+            const mathChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: xValues,
+                    datasets: [{
+                        label: 'f(x)',
+                        data: calculateY(xValues, parseFloat(sliderA.value), parseFloat(sliderB.value)),
+                        borderColor: '#4285F4', // 教育蓝
+                        backgroundColor: 'rgba(66, 133, 244, 0.1)', // 半透明填充区域
+                        borderWidth: 3,
+                        pointRadius: 0, // 隐藏数据点，使曲线平滑
+                        pointHoverRadius: 6,
+                        fill: true,
+                        tension: 0.4 // 贝塞尔曲线平滑度
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 0 // 拖动时不需要动画，要求实时响应
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            titleColor: '#333',
+                            bodyColor: '#4285F4',
+                            borderColor: '#e2e8f0',
+                            borderWidth: 1,
+                            displayColors: false,
+                            callbacks: {
+                                title: (tooltipItems) => `x = ${tooltipItems[0].label}`,
+                                label: (tooltipItem) => `y = ${tooltipItem.raw.toFixed(4)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#F1F5F9', drawBorder: false },
+                            ticks: { 
+                                maxTicksLimit: 11,
+                                color: '#64748B',
+                                callback: function(value, index, values) {
+                                    // 简化X轴标签显示
+                                    return xValues[value] % 2 === 0 ? xValues[value] : '';
+                                }
+                            },
+                            title: { display: true, text: 'X 轴', color: '#94A3B8', font: {family: 'serif', style: 'italic'} }
+                        },
+                        y: {
+                            min: 0,
+                            max: 1.2, // 留出一点顶部空间
+                            grid: { color: '#F1F5F9', drawBorder: false },
+                            ticks: { color: '#64748B' },
+                            title: { display: true, text: 'Y 轴', color: '#94A3B8', font: {family: 'serif', style: 'italic'} }
+                        }
+                    }
+                }
+            });
+
+            // 5. 更新图表和UI的函数
+            function updateAll() {
+                const a = parseFloat(sliderA.value);
+                const b = parseFloat(sliderB.value);
+
+                // 更新数值显示
+                valA.innerText = a.toFixed(1);
+                valB.innerText = b.toFixed(1);
+
+                // 更新观察结论文字
+                obsA.innerText = a.toFixed(1);
+                
+                let bDesc = "";
+                if (b < 0.5) bDesc = "非常尖锐 (能量集中)";
+                else if (b < 2) bDesc = "偏窄锐利";
+                else if (b < 5) bDesc = "标准钟形";
+                else if (b < 8) bDesc = "扁平宽广";
+                else bDesc = "极度扁平 (能量分散)";
+                obsB.innerText = bDesc;
+
+                // 重新计算数据并更新图表
+                mathChart.data.datasets[0].data = calculateY(xValues, a, b);
+                mathChart.update();
+            }
+
+            // 6. 绑定滑动条事件 (使用 input 事件实现实时更新)
+            sliderA.addEventListener('input', updateAll);
+            sliderB.addEventListener('input', updateAll);
+
+            // 初始化调用一次，确保文字状态正确
+            updateAll();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>探究：线段的垂直平分线</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* 护眼底色及全局字体 */
+        body {
+            background-color: #F5F7FB; /* 护眼浅蓝灰 */
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            touch-action: pan-y; /* 允许页面上下滚动，但防止操作画布时乱跑 */
+        }
+        
+        /* 核心教育色定义 */
+        .color-primary { color: #4285F4; }
+        .bg-primary { background-color: #4285F4; }
+        .bg-success { background-color: #34A853; }
+        .text-success { color: #34A853; }
+        .bg-warning { background-color: #FBBC05; }
+        .text-warning { color: #F59E0B; }
+        .bg-danger { background-color: #EA4335; }
+
+        /* 画布区防误触 */
+        #math-canvas-container {
+            touch-action: none; 
+        }
+
+        /* 呼吸发光动画，吸引点击拖拽 */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(251, 188, 5, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(251, 188, 5, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(251, 188, 5, 0); }
+        }
+        .pulse-point {
+            transform-origin: center;
+            animation: pulse-ring 2s infinite;
+            cursor: pointer;
+        }
+
+        /* 对折动画过渡 */
+        #right-triangle-group {
+            transition: transform 1s ease-in-out;
+            transform-origin: 300px 50%; /* 以中垂线x=300为轴 */
+        }
+        .folded {
+            transform: scaleX(-1);
+        }
+
+        /* 隐藏滚动条 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center py-6 px-4 md:px-8">
+
+    <!-- 顶部标题区 -->
+    <header class="w-full max-w-7xl mb-6 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-full bg-white shadow-md flex items-center justify-center text-2xl color-primary">
+                <i class="fas fa-drafting-compass"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-gray-800">线段的垂直平分线</h1>
+                <p class="text-sm text-gray-500 mt-1">拖动动点，记录数据，发现几何规律</p>
+            </div>
+        </div>
+        <div class="hidden md:flex bg-blue-100 text-blue-700 px-4 py-2 rounded-full font-medium text-sm">
+            <i class="fas fa-info-circle mr-2 mt-0.5"></i> 互动探索课堂
+        </div>
+    </header>
+
+    <!-- 主体内容区 -->
+    <main class="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左侧：操作画布 (占用7列) -->
+        <section class="lg:col-span-7 bg-white rounded-2xl shadow-lg p-4 flex flex-col border border-gray-100 relative">
+            
+            <div class="flex justify-between items-center mb-4 px-2">
+                <h2 class="text-lg font-bold text-gray-700">
+                    <i class="fas fa-hand-pointer color-primary mr-2"></i>动手探究
+                </h2>
+                <!-- 对折验证开关 -->
+                <button id="btn-fold" class="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition shadow-sm text-sm font-bold flex items-center">
+                    <i class="fas fa-layer-group mr-2"></i> 模拟对折验证
+                </button>
+            </div>
+
+            <div class="bg-gray-50 rounded-xl relative flex-grow overflow-hidden flex justify-center" id="math-canvas-container">
+                <!-- 提示气泡 -->
+                <div class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-2 rounded-full text-sm font-bold shadow-sm z-10 opacity-90 transition-opacity" id="drag-tip">
+                    上下拖动直线上黄色的点 P
+                </div>
+
+                <!-- SVG 画布 -->
+                <svg id="interactive-svg" viewBox="0 0 600 500" class="w-full h-full max-h-[500px]">
+                    <!-- 网格背景(装饰) -->
+                    <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                        <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#e5e7eb" stroke-width="0.5"/>
+                    </pattern>
+                    <rect width="100%" height="100%" fill="url(#grid)" />
+
+                    <!-- 线段 AB 和 端点 -->
+                    <line x1="150" y1="400" x2="450" y2="400" stroke="#374151" stroke-width="4" stroke-linecap="round" />
+                    <circle cx="150" cy="400" r="6" fill="#1f2937" />
+                    <text x="130" y="425" font-size="20" font-weight="bold" fill="#1f2937">A</text>
+                    
+                    <circle cx="450" cy="400" r="6" fill="#1f2937" />
+                    <text x="460" y="425" font-size="20" font-weight="bold" fill="#1f2937">B</text>
+
+                    <!-- 中垂线 l -->
+                    <line x1="300" y1="50" x2="300" y2="480" stroke="#EA4335" stroke-width="2" />
+                    <text x="310" y="70" font-size="20" font-weight="bold" fill="#EA4335">l</text>
+                    
+                    <!-- 垂直符号 -->
+                    <polyline points="300,385 315,385 315,400" fill="none" stroke="#EA4335" stroke-width="2" />
+
+                    <!-- 组合右侧三角形区域 (用于对折验证) -->
+                    <g id="right-triangle-group">
+                        <!-- 右侧底边 MB 阴影 (用于验证重合) -->
+                        <line x1="300" y1="400" x2="450" y2="400" stroke="#818CF8" stroke-width="8" opacity="0" id="mb-highlight" stroke-linecap="round" />
+                        <!-- 线段 PB -->
+                        <line id="line-PB" x1="450" y1="400" x2="300" y2="200" stroke="#34A853" stroke-width="3" stroke-dasharray="6,4" />
+                        <!-- 半透明填充区 -->
+                        <polygon id="poly-right" points="300,200 450,400 300,400" fill="#34A853" opacity="0.0" />
+                    </g>
+
+                    <!-- 左侧底边 MA 阴影 -->
+                    <line x1="150" y1="400" x2="300" y2="400" stroke="#FBBF24" stroke-width="8" opacity="0" id="ma-highlight" stroke-linecap="round"/>
+                    
+                    <!-- 线段 PA -->
+                    <line id="line-PA" x1="150" y1="400" x2="300" y2="200" stroke="#4285F4" stroke-width="3" stroke-dasharray="6,4" />
+                    <!-- 半透明填充区左侧 -->
+                    <polygon id="poly-left" points="300,200 150,400 300,400" fill="#4285F4" opacity="0.0" />
+
+                    <!-- 动点 P 及其外圈发光 -->
+                    <circle id="point-P-glow" cx="300" cy="200" r="20" fill="rgba(251, 188, 5, 0.3)" class="pulse-point" />
+                    <circle id="point-P" cx="300" cy="200" r="10" fill="#FBBC05" stroke="#FFF" stroke-width="2" class="cursor-pointer" />
+                    <text id="text-P" x="315" y="195" font-size="22" font-weight="bold" fill="#d97706">P</text>
+
+                </svg>
+            </div>
+            
+            <div class="mt-4 flex flex-wrap justify-between items-center text-sm text-gray-600 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                <div class="flex items-center mb-2 sm:mb-0">
+                    <span class="inline-block w-4 h-1 bg-[#4285F4] mr-2"></span> 线段 PA
+                    <span class="inline-block w-4 h-1 bg-[#34A853] ml-4 mr-2"></span> 线段 PB
+                </div>
+                <div>线段AB全长: <span class="font-mono font-bold">10.0</span> cm</div>
+            </div>
+        </section>
+
+        <!-- 右侧：数据记录与结论 (占用5列) -->
+        <section class="lg:col-span-5 flex flex-col gap-4">
+            
+            <!-- 实时测量卡片 -->
+            <div class="bg-white rounded-2xl shadow-md p-5 border border-gray-100 relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+                <h3 class="text-gray-500 font-bold mb-3 flex items-center text-sm">
+                    <i class="fas fa-ruler mr-2"></i> 实时测量数据
+                </h3>
+                
+                <div class="flex justify-between items-center mb-5 gap-4">
+                    <div class="bg-blue-50 flex-1 rounded-xl p-3 text-center border border-blue-100">
+                        <div class="text-gray-500 text-xs font-bold mb-1">PA 长度</div>
+                        <div class="text-2xl font-mono font-bold color-primary" id="val-PA">0.0</div>
+                        <div class="text-xs text-gray-400 mt-1">cm</div>
+                    </div>
+                    <div class="text-xl font-bold text-gray-300">
+                        <i class="fas fa-equals" id="eq-icon"></i>
+                    </div>
+                    <div class="bg-green-50 flex-1 rounded-xl p-3 text-center border border-green-100">
+                        <div class="text-gray-500 text-xs font-bold mb-1">PB 长度</div>
+                        <div class="text-2xl font-mono font-bold text-success" id="val-PB">0.0</div>
+                        <div class="text-xs text-gray-400 mt-1">cm</div>
+                    </div>
+                </div>
+
+                <button id="btn-record" class="w-full bg-success text-white font-bold py-3 md:py-4 rounded-xl shadow-md hover:bg-green-600 active:scale-95 transition flex justify-center items-center text-lg">
+                    <i class="fas fa-clipboard-check mr-2"></i> 记录当前数据 <span id="record-count" class="ml-2 bg-white text-green-600 px-2 py-0.5 rounded-md text-sm">0/3</span>
+                </button>
+            </div>
+
+            <!-- 数据表格卡片 -->
+            <div class="bg-white rounded-2xl shadow-md p-4 border border-gray-100 flex-grow flex flex-col min-h-[180px]">
+                <h3 class="text-gray-500 font-bold mb-3 flex items-center text-sm">
+                    <i class="fas fa-table mr-2"></i> 实验记录表
+                </h3>
+                <div class="overflow-y-auto no-scrollbar flex-grow bg-gray-50 rounded-lg border border-gray-200">
+                    <table class="w-full text-sm text-center">
+                        <thead class="bg-gray-100 text-gray-600 sticky top-0">
+                            <tr>
+                                <th class="py-2 px-2 border-b border-gray-200">实验次数</th>
+                                <th class="py-2 px-2 border-b border-gray-200">点位置</th>
+                                <th class="py-2 px-2 border-b border-gray-200 text-blue-600">PA (cm)</th>
+                                <th class="py-2 px-2 border-b border-gray-200 text-green-600">PB (cm)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="record-tbody" class="text-gray-700">
+                            <!-- 动态插入行 -->
+                            <tr>
+                                <td colspan="4" class="py-6 text-gray-400 text-xs" id="empty-tip">暂无记录，请拖动点P后点击上方按钮记录</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 结论卡片 -->
+            <div id="conclusion-card" class="bg-gray-100 rounded-2xl p-5 border-2 border-dashed border-gray-300 relative transition-all duration-500 flex items-center justify-center opacity-80 min-h-[120px]">
+                <!-- 未解锁状态 -->
+                <div id="lock-state" class="text-center text-gray-400">
+                    <i class="fas fa-lock text-3xl mb-2"></i>
+                    <p class="text-sm font-bold">收集至少 3 组数据后解锁结论</p>
+                </div>
+                
+                <!-- 解锁状态 -->
+                <div id="unlock-state" class="hidden text-center w-full">
+                    <h3 class="text-yellow-600 font-bold text-sm mb-2"><i class="fas fa-lightbulb mr-1"></i> 性质定理发现</h3>
+                    <p class="text-gray-800 font-bold text-lg md:text-xl leading-relaxed tracking-wide">
+                        线段垂直平分线上的点与这条线段<span class="text-red-500 bg-red-50 px-1 rounded">两个端点</span>的距离<span class="text-blue-600 bg-blue-50 px-1 rounded">相等</span>。
+                    </p>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ---- 获取DOM元素 ----
+            const svg = document.getElementById('interactive-svg');
+            const pointP = document.getElementById('point-P');
+            const pointPGlow = document.getElementById('point-P-glow');
+            const textP = document.getElementById('text-P');
+            const linePA = document.getElementById('line-PA');
+            const linePB = document.getElementById('line-PB');
+            
+            const valPA = document.getElementById('val-PA');
+            const valPB = document.getElementById('val-PB');
+            const eqIcon = document.getElementById('eq-icon');
+            const dragTip = document.getElementById('drag-tip');
+            
+            const btnRecord = document.getElementById('btn-record');
+            const recordCountBadge = document.getElementById('record-count');
+            const recordTbody = document.getElementById('record-tbody');
+            const emptyTip = document.getElementById('empty-tip');
+            
+            const btnFold = document.getElementById('btn-fold');
+            const rightTriangleGroup = document.getElementById('right-triangle-group');
+            const polyLeft = document.getElementById('poly-left');
+            const polyRight = document.getElementById('poly-right');
+            const maHighlight = document.getElementById('ma-highlight');
+            const mbHighlight = document.getElementById('mb-highlight');
+
+            // ---- 常量与变量设定 ----
+            const A = { x: 150, y: 400 };
+            const B = { x: 450, y: 400 };
+            const L_x = 300; // 直线 l 的 x 坐标恒定
+            let P = { x: 300, y: 200 }; // 初始 P 点坐标
+            const SCALE = 0.033; // 像素转厘米的比例 (假设AB=300px，对应10cm)
+            
+            let isDragging = false;
+            let recordCount = 0;
+            let isFolded = false;
+            const requiredRecords = 3;
+
+            // ---- 核心计算与渲染函数 ----
+            function updateView() {
+                // 1. 更新SVG元素位置
+                pointP.setAttribute('cy', P.y);
+                pointPGlow.setAttribute('cy', P.y);
+                textP.setAttribute('y', P.y - 5);
+                
+                linePA.setAttribute('y2', P.y);
+                linePB.setAttribute('y2', P.y);
+
+                // 更新多边形区域(用于对折效果展示)
+                polyLeft.setAttribute('points', `300,${P.y} 150,400 300,400`);
+                polyRight.setAttribute('points', `300,${P.y} 450,400 300,400`);
+
+                // 2. 计算距离
+                let pxDistA = Math.sqrt(Math.pow(P.x - A.x, 2) + Math.pow(P.y - A.y, 2));
+                let pxDistB = Math.sqrt(Math.pow(P.x - B.x, 2) + Math.pow(P.y - B.y, 2));
+                
+                // 3. 转换为厘米显示值 (保留1位小数)
+                let cmDistA = (pxDistA * SCALE).toFixed(1);
+                let cmDistB = (pxDistB * SCALE).toFixed(1);
+
+                // 4. 更新UI文本
+                valPA.innerText = cmDistA;
+                valPB.innerText = cmDistB;
+
+                // 5. 样式反馈
+                if (cmDistA === cmDistB) {
+                    eqIcon.classList.remove('text-gray-300');
+                    eqIcon.classList.add('text-green-500');
+                    valPA.classList.add('bg-blue-100', 'rounded-md', 'px-1');
+                    valPB.classList.add('bg-green-100', 'rounded-md', 'px-1');
+                }
+            }
+
+            // 初始化执行一次
+            updateView();
+
+            // ---- 拖拽事件处理 ----
+            // 坐标转换，把屏幕坐标换算到 SVG 内部坐标
+            function getMousePosition(evt) {
+                let CTM = svg.getScreenCTM();
+                let clientX = evt.clientX || (evt.touches && evt.touches[0].clientX);
+                let clientY = evt.clientY || (evt.touches && evt.touches[0].clientY);
+                return {
+                    x: (clientX - CTM.e) / CTM.a,
+                    y: (clientY - CTM.f) / CTM.d
+                };
+            }
+
+            function startDrag(evt) {
+                if (isFolded) return; // 如果处于对折状态，禁止拖拽
+                isDragging = true;
+                pointPGlow.style.animation = 'none'; // 停止发光呼吸
+                pointPGlow.setAttribute('fill', 'rgba(251, 188, 5, 0.5)');
+                // 隐藏顶部提示
+                if(dragTip) dragTip.style.opacity = '0';
+            }
+
+            function drag(evt) {
+                if (isDragging) {
+                    evt.preventDefault(); // 阻止手机滚动
+                    let coord = getMousePosition(evt);
+                    let newY = coord.y;
+                    
+                    // 限制移动范围 (不超出线段l的可视范围)
+                    if (newY < 60) newY = 60;
+                    if (newY > 480) newY = 480;
+                    
+                    P.y = newY;
+                    updateView();
+                }
+            }
+
+            function endDrag() {
+                if(isDragging) {
+                    isDragging = false;
+                    pointPGlow.setAttribute('fill', 'rgba(251, 188, 5, 0.3)');
+                }
+            }
+
+            // 绑定事件 (鼠标 + 触摸)
+            const targetArea = document.getElementById('math-canvas-container');
+            targetArea.addEventListener('mousedown', startDrag);
+            targetArea.addEventListener('mousemove', drag);
+            window.addEventListener('mouseup', endDrag);
+
+            targetArea.addEventListener('touchstart', startDrag, {passive: false});
+            targetArea.addEventListener('touchmove', drag, {passive: false});
+            window.addEventListener('touchend', endDrag);
+
+
+            // ---- 记录数据逻辑 ----
+            btnRecord.addEventListener('click', () => {
+                if(isFolded) {
+                    alert('请先取消对折状态再记录数据');
+                    return;
+                }
+
+                if (recordCount === 0 && emptyTip) {
+                    emptyTip.remove(); // 移除空提示
+                }
+
+                recordCount++;
+                let ptName = `P${recordCount}`;
+                let currentPA = valPA.innerText;
+                let currentPB = valPB.innerText;
+
+                // 在界面上留下小标记 (可选增加教学感)
+                let mark = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                mark.setAttribute('cx', P.x);
+                mark.setAttribute('cy', P.y);
+                mark.setAttribute('r', '4');
+                mark.setAttribute('fill', '#9CA3AF');
+                svg.insertBefore(mark, pointPGlow);
+
+                let textMark = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                textMark.setAttribute('x', P.x - 25);
+                textMark.setAttribute('y', P.y + 5);
+                textMark.setAttribute('font-size', '12');
+                textMark.setAttribute('fill', '#9CA3AF');
+                textMark.textContent = ptName;
+                svg.insertBefore(textMark, pointPGlow);
+
+                // 添加表格行 (带轻微的高亮动画)
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-100 bg-green-50 transition-colors duration-1000';
+                tr.innerHTML = `
+                    <td class="py-2 px-2 font-medium">${recordCount}</td>
+                    <td class="py-2 px-2">${ptName}</td>
+                    <td class="py-2 px-2 text-blue-600 font-mono">${currentPA}</td>
+                    <td class="py-2 px-2 text-green-600 font-mono">${currentPB}</td>
+                `;
+                recordTbody.prepend(tr);
+                
+                // 去除背景高亮
+                setTimeout(() => { tr.classList.remove('bg-green-50'); }, 100);
+
+                // 更新按钮徽章
+                recordCountBadge.innerText = `${Math.min(recordCount, requiredRecords)}/${requiredRecords}`;
+
+                // 检查是否满足解锁条件
+                if (recordCount === requiredRecords) {
+                    unlockConclusion();
+                }
+            });
+
+            // ---- 解锁结论动画 ----
+            function unlockConclusion() {
+                const card = document.getElementById('conclusion-card');
+                const lockState = document.getElementById('lock-state');
+                const unlockState = document.getElementById('unlock-state');
+                const btn = document.getElementById('btn-record');
+
+                // 按钮状态改变
+                btn.classList.replace('bg-success', 'bg-gray-400');
+                btn.classList.replace('hover:bg-green-600', 'hover:bg-gray-500');
+                btn.innerHTML = `<i class="fas fa-check-circle mr-2"></i> 目标达成`;
+
+                // 卡片特效翻转/淡入
+                card.classList.replace('bg-gray-100', 'bg-yellow-50');
+                card.classList.replace('border-gray-300', 'border-yellow-400');
+                card.classList.replace('border-dashed', 'border-solid');
+                card.classList.remove('opacity-80');
+                card.classList.add('shadow-lg', 'scale-[1.02]');
+
+                lockState.classList.add('hidden');
+                unlockState.classList.remove('hidden');
+                
+                // 简单的粒子或闪烁效果可以通过tailwind类实现
+                setTimeout(() => {
+                    card.classList.remove('scale-[1.02]');
+                }, 300);
+            }
+
+            // ---- 对折验证功能 ----
+            btnFold.addEventListener('click', () => {
+                isFolded = !isFolded;
+                if(isFolded) {
+                    // 开始对折
+                    btnFold.innerHTML = `<i class="fas fa-undo mr-2"></i> 恢复原状`;
+                    btnFold.classList.replace('bg-indigo-50', 'bg-amber-100');
+                    btnFold.classList.replace('text-indigo-600', 'text-amber-700');
+                    
+                    // 让左右底边底色高亮，表示边重合
+                    maHighlight.setAttribute('opacity', '0.5');
+                    mbHighlight.setAttribute('opacity', '0.5');
+                    polyRight.setAttribute('opacity', '0.3');
+                    polyLeft.setAttribute('opacity', '0.3');
+
+                    // 执行翻转
+                    rightTriangleGroup.classList.add('folded');
+                    
+                    // 隐藏 P 点的发光和提示
+                    pointPGlow.style.display = 'none';
+                    if(dragTip) dragTip.style.opacity = '0';
+
+                } else {
+                    // 恢复
+                    btnFold.innerHTML = `<i class="fas fa-layer-group mr-2"></i> 模拟对折验证`;
+                    btnFold.classList.replace('bg-amber-100', 'bg-indigo-50');
+                    btnFold.classList.replace('text-amber-700', 'text-indigo-600');
+                    
+                    maHighlight.setAttribute('opacity', '0');
+                    mbHighlight.setAttribute('opacity', '0');
+                    polyRight.setAttribute('opacity', '0');
+                    polyLeft.setAttribute('opacity', '0');
+
+                    rightTriangleGroup.classList.remove('folded');
+                    pointPGlow.style.display = 'block';
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>

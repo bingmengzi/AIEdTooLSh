@@ -1,0 +1,127 @@
+## 通用HTML架构指南
+
+这是生成教学HTML页面的通用参考架构。请根据此模板生成完整、可运行的HTML页面。
+
+### 基本文档结构
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【主题名称】- 交互式教学</title>
+    
+    <!-- Tailwind CSS (必须) -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    
+    <!-- Font Awesome 图标 (必须) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- 自定义样式 -->
+    <style>
+        :root {
+            --primary-color: #3B82F6;
+            --secondary-color: #10B981;
+            --accent-color: #F59E0B;
+            --bg-color: #F8FAFC;
+            --text-color: #1E293B;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <!-- 主容器 -->
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- 顶部标题区 -->
+        <header class="glass-card p-6 mb-6">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-3">
+                <i class="fas fa-graduation-cap text-blue-500"></i>
+                【主题名称】
+            </h1>
+            <p class="text-gray-600 mt-2">简短描述这个教学场景的目的和内容</p>
+        </header>
+        
+        <!-- 主内容区 -->
+        <main class="glass-card p-6">
+            <!-- 根据场景类型填充内容 -->
+        </main>
+        
+        <!-- 底部信息区（可选） -->
+        <footer class="text-center text-white/70 mt-6 text-sm">
+            <p>交互式教学演示 | 拖拽、点击或使用滑块进行探索</p>
+        </footer>
+        
+    </div>
+    
+    <script>
+        // ========== 全局变量声明 ==========
+        // 在此声明所有需要的变量
+        
+        // ========== 初始化函数 ==========
+        function init() {
+            // 初始化逻辑
+        }
+        
+        // ========== 事件监听器设置 ==========
+        function setupEventListeners() {
+            // 绑定事件监听器
+        }
+        
+        // ========== 核心功能函数 ==========
+        // 按功能模块组织函数
+        
+        // ========== 工具函数 ==========
+        // 通用辅助函数
+        
+        // ========== 启动 ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            init();
+            setupEventListeners();
+        });
+    </script>
+</body>
+</html>
+```
+
+### 关键要求
+
+1. **必须引入的CDN**:
+   - Tailwind CSS: `https://cdn.tailwindcss.com/3.4.17`
+   - Font Awesome: `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css`
+
+2. **响应式设计**:
+   - 使用 Tailwind 的响应式前缀 (md:, lg:)
+   - 确保在移动端和桌面端都能正常显示
+
+3. **视觉风格**:
+   - 使用毛玻璃卡片 (glass-card) 效果
+   - 渐变背景增加视觉层次
+   - 配色协调，使用 CSS 变量便于主题切换
+
+4. **代码组织**:
+   - JavaScript 分模块组织
+   - 使用清晰的注释分隔代码块
+   - 变量命名语义化
+
+5. **用户体验**:
+   - 加载时有初始状态显示
+   - 交互有即时反馈
+   - 提供操作提示

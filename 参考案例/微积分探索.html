@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>微积分交互探索实验室</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            touch-action: pan-y; /* 允许垂直滚动，限制水平避免意外缩放 */
+            overflow-x: hidden;
+        }
+        
+        /* 自定义滑块样式 */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 3px solid currentColor;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #E2E8F0;
+            border-radius: 4px;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        .tab-btn.active-derivative { background-color: #EA4335; color: white; border-color: #EA4335; }
+        .tab-btn.active-integral { background-color: #34A853; color: white; border-color: #34A853; }
+        
+        .math-font { font-family: "Times New Roman", Times, serif; font-style: italic; }
+    </style>
+</head>
+<body class="bg-[#F5F7FB] text-slate-800 min-h-screen flex flex-col">
+
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-sm px-6 py-4 flex items-center justify-between z-10 relative">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-[#4285F4] text-white flex items-center justify-center text-xl shadow-md">
+                <i class="fa-solid fa-square-root-variable"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold text-slate-800 tracking-wide">微积分交互探索室</h1>
+                <p class="text-xs text-slate-500">让数学看得见、摸得着</p>
+            </div>
+        </div>
+        <div class="hidden md:flex items-center bg-[#F0F7F4] text-[#34A853] px-4 py-2 rounded-full font-medium text-sm border border-[#34A853]/30">
+            <i class="fa-solid fa-lightbulb mr-2 text-[#FBBC05]"></i>
+            提示：滑动滑块或直接在坐标系内拖动！
+        </div>
+    </header>
+
+    <!-- 主体内容区 -->
+    <main class="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 flex flex-col lg:flex-row gap-6">
+        
+        <!-- 左侧控制面板 -->
+        <aside class="w-full lg:w-96 flex flex-col gap-5 shrink-0">
+            
+            <!-- 函数选择卡片 -->
+            <div class="bg-white rounded-2xl shadow-md p-5 border-t-4 border-[#4285F4]">
+                <h2 class="text-lg font-bold mb-3 flex items-center text-slate-700">
+                    <i class="fa-solid fa-function text-[#4285F4] mr-2"></i> 选择观察的函数
+                </h2>
+                <div class="grid grid-cols-1 gap-3">
+                    <button onclick="changeFunc(0)" id="btn-func-0" class="func-btn py-3 px-4 rounded-xl border-2 border-[#4285F4] bg-[#4285F4]/10 text-[#4285F4] font-bold text-left transition-all hover:bg-[#4285F4]/20 flex justify-between items-center">
+                        <span class="text-lg"><span class="math-font">f(x)</span> = 0.5<span class="math-font">x</span>² - 2</span>
+                        <i class="fa-solid fa-check-circle check-icon"></i>
+                    </button>
+                    <button onclick="changeFunc(1)" id="btn-func-1" class="func-btn py-3 px-4 rounded-xl border-2 border-slate-200 text-slate-600 font-bold text-left transition-all hover:bg-slate-50 flex justify-between items-center">
+                        <span class="text-lg"><span class="math-font">f(x)</span> = 3sin(<span class="math-font">x</span>)</span>
+                        <i class="fa-solid fa-check-circle hidden check-icon text-[#4285F4]"></i>
+                    </button>
+                    <button onclick="changeFunc(2)" id="btn-func-2" class="func-btn py-3 px-4 rounded-xl border-2 border-slate-200 text-slate-600 font-bold text-left transition-all hover:bg-slate-50 flex justify-between items-center">
+                        <span class="text-lg"><span class="math-font">f(x)</span> = 0.1<span class="math-font">x</span>³ - <span class="math-font">x</span></span>
+                        <i class="fa-solid fa-check-circle hidden check-icon text-[#4285F4]"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 模式切换卡片 -->
+            <div class="bg-white rounded-2xl shadow-md overflow-hidden flex flex-col flex-1">
+                <div class="flex border-b border-slate-200 bg-slate-50">
+                    <button onclick="setMode('derivative')" id="tab-der" class="tab-btn active-derivative flex-1 py-4 font-bold text-lg transition-colors border-b-4 border-transparent">
+                        <i class="fa-solid fa-arrow-trend-up mr-2"></i>探索导数
+                    </button>
+                    <button onclick="setMode('integral')" id="tab-int" class="tab-btn flex-1 py-4 font-bold text-lg text-slate-500 transition-colors border-b-4 border-transparent hover:text-slate-800">
+                        <i class="fa-solid fa-chart-area mr-2"></i>探索积分
+                    </button>
+                </div>
+
+                <!-- 导数控制面板 -->
+                <div id="panel-der" class="p-5 flex-1 flex flex-col">
+                    <div class="bg-red-50 text-red-800 p-3 rounded-lg text-sm mb-4 border border-red-100">
+                        <strong>什么是导数？</strong> 导数是函数在某一点的“变化率”，直观表现为该点 <b>切线的斜率</b>。
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="flex justify-between font-bold text-slate-700 mb-2">
+                            <span>拖动观察点 <span class="math-font text-[#EA4335]">x</span></span>
+                            <span id="val-x" class="text-[#EA4335]">0.00</span>
+                        </label>
+                        <input type="range" id="slider-x" min="-8" max="8" step="0.1" value="2" class="text-[#EA4335]">
+                    </div>
+
+                    <div class="mt-auto bg-slate-50 rounded-xl p-4 border border-slate-200">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-slate-500">函数值 <span class="math-font">f(x)</span> = </span>
+                            <span id="val-fx" class="font-bold text-lg">0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                            <span class="text-slate-500">导数值 <span class="math-font">f'(x)</span> = </span>
+                            <span id="val-dfx" class="font-bold text-2xl text-[#EA4335]">0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 积分控制面板 -->
+                <div id="panel-int" class="p-5 flex-1 flex flex-col hidden">
+                    <div class="bg-green-50 text-green-800 p-3 rounded-lg text-sm mb-4 border border-green-100">
+                        <strong>什么是定积分？</strong> 积分可以理解为曲线下方的 <b>面积</b>。我们可以用很多个小矩形来近似计算它。
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="flex justify-between font-bold text-slate-700 mb-2">
+                            <span>区间范围 [<span class="math-font">a, b</span>]</span>
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" id="slider-a" min="-8" max="7" step="0.5" value="-2" class="text-[#34A853]">
+                            <span class="text-sm font-mono bg-slate-100 px-2 py-1 rounded w-16 text-center" id="val-a">-2.0</span>
+                        </div>
+                        <div class="flex items-center gap-3 mt-3">
+                            <input type="range" id="slider-b" min="-7" max="8" step="0.5" value="4" class="text-[#34A853]">
+                            <span class="text-sm font-mono bg-slate-100 px-2 py-1 rounded w-16 text-center" id="val-b">4.0</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="flex justify-between font-bold text-slate-700 mb-2">
+                            <span>矩形数量 <span class="math-font text-[#FBBC05]">n</span></span>
+                            <span id="val-n" class="text-[#FBBC05] font-bold">10</span>
+                        </label>
+                        <input type="range" id="slider-n" min="1" max="100" step="1" value="10" class="text-[#FBBC05]">
+                    </div>
+
+                    <div class="mt-auto bg-slate-50 rounded-xl p-4 border border-slate-200">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-slate-500">矩形近似面积 ≈</span>
+                            <span id="val-area-approx" class="font-bold text-lg text-[#FBBC05]">0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 border-t border-slate-200">
+                            <span class="text-slate-500">真实精确面积 =</span>
+                            <span id="val-area-exact" class="font-bold text-2xl text-[#34A853]">0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 教育装饰图 -->
+            <div class="hidden lg:block w-full h-32 rounded-2xl overflow-hidden shadow-sm relative bg-[#F5F7FB]">
+                <img src="https://api.zcat.cn/udata/718570/png/9410ef61d755154f9297edb0afbec652.png" alt="智慧助教" class="w-full h-full object-cover opacity-90">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent flex items-end p-3">
+                    <span class="text-white text-sm font-medium">数学是宇宙的语言 🚀</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右侧画布区 -->
+        <section class="flex-1 bg-white rounded-2xl shadow-lg relative flex flex-col overflow-hidden min-h-[400px]">
+            <div class="absolute top-4 left-4 z-10 bg-white/80 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm text-sm font-medium flex items-center gap-2">
+                <div id="mode-badge" class="w-3 h-3 rounded-full bg-[#EA4335]"></div>
+                <span id="mode-text" class="text-slate-700">导数观察模式</span>
+            </div>
+            <canvas id="mathCanvas" class="w-full h-full cursor-crosshair touch-none"></canvas>
+        </section>
+
+    </main>
+
+<script>
+    // --- 1. 数学逻辑引擎 ---
+    const MathEngine = {
+        functions: [
+            { id: 0, f: (x) => 0.5 * x * x - 2, color: '#4285F4' },
+            { id: 1, f: (x) => 3 * Math.sin(x), color: '#4285F4' },
+            { id: 2, f: (x) => 0.1 * x * x * x - x, color: '#4285F4' }
+        ],
+        currentFuncIndex: 0,
+        
+        get f() { return this.functions[this.currentFuncIndex].f; },
+        
+        // 计算导数 (数值近似)
+        derivative: function(x) {
+            const h = 0.0001;
+            return (this.f(x + h) - this.f(x - h)) / (2 * h);
+        },
+        
+        // 计算定积分 (辛普森法则，接近真实值)
+        integrateExact: function(a, b) {
+            const n = 1000;
+            const h = (b - a) / n;
+            let sum = this.f(a) + this.f(b);
+            for (let i = 1; i < n; i++) {
+                let x = a + i * h;
+                sum += this.f(x) * (i % 2 === 0 ? 2 : 4);
+            }
+            return (sum * h) / 3;
+        },
+
+        // 计算黎曼和 (左端点法则，用于演示矩形)
+        integrateRiemann: function(a, b, n) {
+            const dx = (b - a) / n;
+            let sum = 0;
+            for (let i = 0; i < n; i++) {
+                sum += this.f(a + i * dx) * dx;
+            }
+            return sum;
+        }
+    };
+
+    // --- 2. 状态管理 ---
+    const State = {
+        mode: 'derivative', // 'derivative' or 'integral'
+        derX: 2,
+        intA: -2,
+        intB: 4,
+        intN: 10
+    };
+
+    // --- 3. 渲染引擎 ---
+    const canvas = document.getElementById('mathCanvas');
+    const ctx = canvas.getContext('2d', { alpha: false });
+    
+    // 逻辑坐标范围
+    const X_MIN = -10, X_MAX = 10;
+    const Y_MIN = -8, Y_MAX = 8;
+    
+    let width, height;
+
+    function resizeCanvas() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        width = rect.width;
+        height = rect.height;
+        // 支持高分屏
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
+        render();
+    }
+
+    // 坐标映射
+    function mapX(x) { return (x - X_MIN) / (X_MAX - X_MIN) * width; }
+    function mapY(y) { return height - (y - Y_MIN) / (Y_MAX - Y_MIN) * height; }
+    function unmapX(px) { return px / width * (X_MAX - X_MIN) + X_MIN; }
+
+    function drawGridAndAxes() {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#E2E8F0';
+        
+        // 画网格
+        for (let x = Math.ceil(X_MIN); x <= Math.floor(X_MAX); x++) {
+            ctx.beginPath(); ctx.moveTo(mapX(x), 0); ctx.lineTo(mapX(x), height); ctx.stroke();
+        }
+        for (let y = Math.ceil(Y_MIN); y <= Math.floor(Y_MAX); y++) {
+            ctx.beginPath(); ctx.moveTo(0, mapY(y)); ctx.lineTo(width, mapY(y)); ctx.stroke();
+        }
+
+        // 画坐标轴
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#94A3B8';
+        ctx.beginPath(); ctx.moveTo(0, mapY(0)); ctx.lineTo(width, mapY(0)); ctx.stroke(); // X轴
+        ctx.beginPath(); ctx.moveTo(mapX(0), 0); ctx.lineTo(mapX(0), height); ctx.stroke(); // Y轴
+
+        // 标度
+        ctx.fillStyle = '#64748B';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        for (let x = Math.ceil(X_MIN); x <= Math.floor(X_MAX); x++) {
+            if (x !== 0) ctx.fillText(x, mapX(x), mapY(0) + 15);
+        }
+        ctx.textAlign = 'right';
+        for (let y = Math.ceil(Y_MIN); y <= Math.floor(Y_MAX); y++) {
+            if (y !== 0) ctx.fillText(y, mapX(0) - 5, mapY(y) + 4);
+        }
+        ctx.fillText('0', mapX(0) - 5, mapY(0) + 15);
+    }
+
+    function drawFunction() {
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#4285F4';
+        ctx.beginPath();
+        let first = true;
+        for (let px = 0; px <= width; px += 2) {
+            let x = unmapX(px);
+            let y = MathEngine.f(x);
+            if (y > Y_MAX + 5 || y < Y_MIN - 5) { first = true; continue; } // 超出太多则断开
+            if (first) { ctx.moveTo(mapX(x), mapY(y)); first = false; } 
+            else { ctx.lineTo(mapX(x), mapY(y)); }
+        }
+        ctx.stroke();
+    }
+
+    function drawDerivative() {
+        const x = State.derX;
+        const y = MathEngine.f(x);
+        const slope = MathEngine.derivative(x);
+        
+        const px = mapX(x);
+        const py = mapY(y);
+
+        // 画切线
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#EA4335';
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        // 计算切线两端点 (延伸超出屏幕)
+        const dx = X_MAX - X_MIN;
+        const x1 = x - dx, y1 = y - slope * dx;
+        const x2 = x + dx, y2 = y + slope * dx;
+        ctx.moveTo(mapX(x1), mapY(y1));
+        ctx.lineTo(mapX(x2), mapY(y2));
+        ctx.stroke();
+        ctx.setLineDash([]); // 恢复实线
+
+        // 画辅助直角三角形 (dx=1) 帮助理解斜率
+        const step = 1.5;
+        const tx = x + step;
+        const ty = y + slope * step;
+        
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#FBBC05';
+        ctx.fillStyle = 'rgba(251, 188, 5, 0.1)';
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(mapX(tx), mapY(y));
+        ctx.lineTo(mapX(tx), mapY(ty));
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        // 画红点
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fillStyle = '#EA4335';
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    function drawIntegral() {
+        let a = Math.min(State.intA, State.intB);
+        let b = Math.max(State.intA, State.intB);
+        const n = State.intN;
+        const dx = (b - a) / n;
+
+        // 画精确面积填充 (背景淡绿色)
+        ctx.fillStyle = 'rgba(52, 168, 83, 0.2)';
+        ctx.beginPath();
+        ctx.moveTo(mapX(a), mapY(0));
+        for (let x = a; x <= b; x += (b-a)/100) {
+            ctx.lineTo(mapX(x), mapY(MathEngine.f(x)));
+        }
+        ctx.lineTo(mapX(b), mapY(MathEngine.f(b)));
+        ctx.lineTo(mapX(b), mapY(0));
+        ctx.fill();
+
+        // 画黎曼矩形
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#2E7D32';
+        for (let i = 0; i < n; i++) {
+            let rectX = a + i * dx;
+            let rectY = MathEngine.f(rectX);
+            let px = mapX(rectX);
+            let py = mapY(rectY);
+            let pw = mapX(rectX + dx) - px;
+            let ph = mapY(0) - py;
+            
+            // 矩形填充色根据正负稍微区分
+            ctx.fillStyle = rectY >= 0 ? 'rgba(52, 168, 83, 0.4)' : 'rgba(234, 67, 53, 0.2)';
+            ctx.fillRect(px, py, pw, ph);
+            ctx.strokeRect(px, py, pw, ph);
+        }
+        
+        // 标记 a 和 b 线段
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#34A853';
+        ctx.beginPath(); ctx.moveTo(mapX(a), mapY(Y_MIN)); ctx.lineTo(mapX(a), mapY(Y_MAX)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(mapX(b), mapY(Y_MIN)); ctx.lineTo(mapX(b), mapY(Y_MAX)); ctx.stroke();
+    }
+
+    function render() {
+        drawGridAndAxes();
+        if (State.mode === 'integral') drawIntegral();
+        drawFunction();
+        if (State.mode === 'derivative') drawDerivative();
+    }
+
+    // --- 4. 交互与 UI 更新 ---
+    
+    function updateUI() {
+        if (State.mode === 'derivative') {
+            document.getElementById('val-x').innerText = State.derX.toFixed(2);
+            document.getElementById('val-fx').innerText = MathEngine.f(State.derX).toFixed(2);
+            document.getElementById('val-dfx').innerText = MathEngine.derivative(State.derX).toFixed(2);
+        } else {
+            let a = State.intA;
+            let b = State.intB;
+            // 确保滑块不交叉
+            if(a > b) {
+                if(document.activeElement.id === 'slider-a') b = a;
+                else a = b;
+                State.intA = a; State.intB = b;
+                document.getElementById('slider-a').value = a;
+                document.getElementById('slider-b').value = b;
+            }
+            
+            document.getElementById('val-a').innerText = a.toFixed(1);
+            document.getElementById('val-b').innerText = b.toFixed(1);
+            document.getElementById('val-n').innerText = State.intN;
+            
+            const approx = MathEngine.integrateRiemann(a, b, State.intN);
+            const exact = MathEngine.integrateExact(a, b);
+            document.getElementById('val-area-approx').innerText = approx.toFixed(3);
+            document.getElementById('val-area-exact').innerText = exact.toFixed(3);
+        }
+        render();
+    }
+
+    // 事件监听
+    document.getElementById('slider-x').addEventListener('input', (e) => { State.derX = parseFloat(e.target.value); updateUI(); });
+    document.getElementById('slider-a').addEventListener('input', (e) => { State.intA = parseFloat(e.target.value); updateUI(); });
+    document.getElementById('slider-b').addEventListener('input', (e) => { State.intB = parseFloat(e.target.value); updateUI(); });
+    document.getElementById('slider-n').addEventListener('input', (e) => { State.intN = parseInt(e.target.value); updateUI(); });
+
+    // 画布触摸/鼠标交互
+    let isDragging = false;
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('mousemove', drag);
+    canvas.addEventListener('mouseup', endDrag);
+    canvas.addEventListener('mouseleave', endDrag);
+    
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrag(e.touches[0]); }, {passive: false});
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); drag(e.touches[0]); }, {passive: false});
+    canvas.addEventListener('touchend', endDrag);
+
+    function startDrag(e) {
+        isDragging = true;
+        updateByPointer(e);
+    }
+    
+    function drag(e) {
+        if (!isDragging) return;
+        updateByPointer(e);
+    }
+    
+    function endDrag() { isDragging = false; }
+
+    function updateByPointer(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.clientX || e.pageX;
+        const px = clientX - rect.left;
+        let x = unmapX(px);
+        x = Math.max(X_MIN, Math.min(X_MAX, x)); // 限制在范围内
+        
+        if (State.mode === 'derivative') {
+            State.derX = x;
+            document.getElementById('slider-x').value = x;
+        } else {
+            // 在积分模式下，点击左半部分改变a，右半部分改变b
+            let mid = (State.intA + State.intB) / 2;
+            if (x < mid) {
+                State.intA = Math.min(x, State.intB);
+                document.getElementById('slider-a').value = State.intA;
+            } else {
+                State.intB = Math.max(x, State.intA);
+                document.getElementById('slider-b').value = State.intB;
+            }
+        }
+        updateUI();
+    }
+
+    // 全局控制函数
+    window.changeFunc = function(index) {
+        MathEngine.currentFuncIndex = index;
+        
+        // UI 更新
+        document.querySelectorAll('.func-btn').forEach((btn, i) => {
+            const icon = btn.querySelector('.check-icon');
+            if(i === index) {
+                btn.classList.add('border-[#4285F4]', 'bg-[#4285F4]/10', 'text-[#4285F4]');
+                btn.classList.remove('border-slate-200', 'text-slate-600');
+                icon.classList.remove('hidden');
+            } else {
+                btn.classList.remove('border-[#4285F4]', 'bg-[#4285F4]/10', 'text-[#4285F4]');
+                btn.classList.add('border-slate-200', 'text-slate-600');
+                icon.classList.add('hidden');
+            }
+        });
+        updateUI();
+    }
+
+    window.setMode = function(mode) {
+        State.mode = mode;
+        
+        const tabDer = document.getElementById('tab-der');
+        const tabInt = document.getElementById('tab-int');
+        const panelDer = document.getElementById('panel-der');
+        const panelInt = document.getElementById('panel-int');
+        const modeBadge = document.getElementById('mode-badge');
+        const modeText = document.getElementById('mode-text');
+
+        if (mode === 'derivative') {
+            tabDer.classList.add('active-derivative'); tabDer.classList.remove('text-slate-500');
+            tabInt.classList.remove('active-integral'); tabInt.classList.add('text-slate-500');
+            panelDer.classList.remove('hidden');
+            panelInt.classList.add('hidden');
+            modeBadge.style.backgroundColor = '#EA4335';
+            modeText.innerText = '导数观察模式';
+        } else {
+            tabInt.classList.add('active-integral'); tabInt.classList.remove('text-slate-500');
+            tabDer.classList.remove('active-derivative'); tabDer.classList.add('text-slate-500');
+            panelInt.classList.remove('hidden');
+            panelDer.classList.add('hidden');
+            modeBadge.style.backgroundColor = '#34A853';
+            modeText.innerText = '积分近似模式';
+        }
+        updateUI();
+    }
+
+    // 初始化
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    updateUI();
+
+</script>
+</body>
+</html>

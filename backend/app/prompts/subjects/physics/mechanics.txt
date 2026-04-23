@@ -1,0 +1,139 @@
+## 力学专项指导
+
+你正在处理一道力学题目（运动学、动力学、静力学等）。
+
+### 力学可视化要点
+
+1. **力的表示**
+   - 用箭头表示力的方向
+   - 箭头长度正比于力的大小
+   - 标注力的名称（重力G、拉力F、摩擦力f等）
+
+2. **运动轨迹**
+   - 匀速直线运动：等间距点
+   - 加速运动：间距递增
+   - 抛物运动：绘制完整抛物线轨迹
+
+3. **受力分析图**
+   - 物体用简化图形表示
+   - 所有力从物体重心出发
+   - 力要按比例绘制
+
+### 运动学模拟
+
+```javascript
+// 抛体运动模拟
+class Projectile {
+    constructor(x0, y0, v0, angle) {
+        this.x = x0;
+        this.y = y0;
+        this.vx = v0 * Math.cos(angle);
+        this.vy = v0 * Math.sin(angle);
+        this.g = 9.8;  // 重力加速度
+        this.trail = [];  // 轨迹点
+    }
+    
+    update(dt) {
+        // 保存轨迹
+        this.trail.push({ x: this.x, y: this.y });
+        
+        // 速度更新
+        this.vy -= this.g * dt;  // 向下为负
+        
+        // 位置更新
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+    }
+    
+    draw(ctx, scale, originX, originY) {
+        // 绘制轨迹
+        ctx.beginPath();
+        ctx.strokeStyle = '#4285F4';
+        ctx.lineWidth = 2;
+        this.trail.forEach((p, i) => {
+            const px = originX + p.x * scale;
+            const py = originY - p.y * scale;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        
+        // 绘制当前位置的小球
+        const cx = originX + this.x * scale;
+        const cy = originY - this.y * scale;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+        ctx.fillStyle = '#EA4335';
+        ctx.fill();
+    }
+}
+```
+
+### 静力学分析
+
+```javascript
+// 力的合成与分解
+function decomposeForce(force, angle) {
+    return {
+        fx: force * Math.cos(angle),
+        fy: force * Math.sin(angle)
+    };
+}
+
+function composeForces(forces) {
+    let fx = 0, fy = 0;
+    forces.forEach(f => {
+        fx += f.fx;
+        fy += f.fy;
+    });
+    return {
+        magnitude: Math.sqrt(fx*fx + fy*fy),
+        angle: Math.atan2(fy, fx)
+    };
+}
+
+// 绘制力的箭头
+function drawForceArrow(ctx, x, y, fx, fy, scale, color, label) {
+    const ex = x + fx * scale;
+    const ey = y - fy * scale;  // Y轴翻转
+    
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(ex, ey);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    
+    // 箭头头部
+    const angle = Math.atan2(-(fy), fx);
+    const headLen = 12;
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - headLen*Math.cos(angle-0.4), ey + headLen*Math.sin(angle-0.4));
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - headLen*Math.cos(angle+0.4), ey + headLen*Math.sin(angle+0.4));
+    ctx.stroke();
+    
+    // 标签
+    ctx.fillStyle = color;
+    ctx.font = 'bold 14px Arial';
+    ctx.fillText(label, ex + 5, ey - 5);
+}
+```
+
+### 交互设计建议
+
+1. **参数控制**
+   - 初速度大小和方向（滑块 + 角度旋钮）
+   - 质量、重力加速度
+   - 摩擦系数（如有）
+
+2. **动画控制**
+   - 播放/暂停按钮
+   - 重置按钮
+   - 速度倍率（0.5x, 1x, 2x）
+
+3. **数据面板**
+   - 实时显示位置、速度、加速度
+   - 显示运动时间
+   - 能量条（动能/势能/总能量）

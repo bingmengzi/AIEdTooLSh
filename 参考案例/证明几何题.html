@@ -1,0 +1,441 @@
+/*
+在四面体 ABCD 中
+已知 AB ⟂ CD
+已知 AD ⟂ BC
+设 E 为 AC 中点
+F 为 BD 中点
+
+证明 EF ⟂ AH
+*/
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四面体垂直关系探究实验</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Microsoft YaHei', sans-serif; }
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* 隐藏范围选择器的默认样式以自定义 */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #4285F4;
+            cursor: pointer;
+            margin-top: -4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-[#F0F7F4] min-h-screen p-4 md:p-6 flex flex-col md:flex-row gap-6">
+
+    <!-- 左侧面板 -->
+    <div class="w-full md:w-1/3 lg:w-1/4 bg-white rounded-2xl shadow-lg flex flex-col overflow-hidden max-h-screen">
+        <!-- 头部插画与标题 -->
+        <div class="relative">
+            <img src="https://api.zcat.cn/gen/image?prompt=3D_Geometry_Education_Illustration_with_Math_Symbols" alt="数学几何插图" class="w-full h-32 object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-white to-transparent"></div>
+            <h1 class="absolute bottom-2 left-5 text-xl font-bold text-[#4285F4] drop-shadow-sm">
+                <i class="fas fa-shapes mr-2"></i>空间向量探究实验室
+            </h1>
+        </div>
+
+        <div class="p-5 flex-1 overflow-y-auto flex flex-col gap-5">
+            <div class="text-sm text-gray-600 bg-[#F5F7FB] p-3 rounded-xl border border-blue-100">
+                <b>课题：</b>若四面体满足 <b>AB ⟂ CD</b> 且 <b>AD ⟂ BC</b>，
+                中点连线 <b>EF</b> 是否必定垂直于垂线 <b>AH</b>？
+            </div>
+
+            <!-- 参数控制区 -->
+            <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex flex-col gap-4">
+                <h2 class="text-sm font-bold text-gray-700"><i class="fas fa-sliders-h text-[#FBBC05] mr-2"></i>调节四面体顶点</h2>
+                
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-600 font-medium">顶点 A 高度 (y轴)</span>
+                        <span id="valA" class="text-[#4285F4] font-bold">6.0</span>
+                    </div>
+                    <input type="range" id="sliderA" min="2" max="12" step="0.5" value="6" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-600 font-medium">顶点 C 位置 (x轴)</span>
+                        <span id="valC" class="text-[#4285F4] font-bold">5.0</span>
+                    </div>
+                    <input type="range" id="sliderC" min="2" max="10" step="0.5" value="5" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-gray-600 font-medium">顶点 D 位置 (z轴)</span>
+                        <span id="valD" class="text-[#4285F4] font-bold">4.0</span>
+                    </div>
+                    <input type="range" id="sliderD" min="2" max="10" step="0.5" value="4" class="w-full">
+                </div>
+            </div>
+
+            <!-- 数据监测区 -->
+            <div class="flex flex-col gap-3">
+                <h2 class="text-sm font-bold text-gray-700"><i class="fas fa-microchip text-[#34A853] mr-2"></i>实时计算验证</h2>
+                
+                <div class="p-3 bg-green-50 rounded-xl border border-green-200 flex justify-between items-center">
+                    <span class="font-semibold text-[#34A853] text-sm">向量 AB · CD</span>
+                    <span id="dot1" class="font-mono bg-white px-2 py-1 rounded shadow-sm text-green-700">0.00</span>
+                </div>
+                
+                <div class="p-3 bg-green-50 rounded-xl border border-green-200 flex justify-between items-center">
+                    <span class="font-semibold text-[#34A853] text-sm">向量 AD · BC</span>
+                    <span id="dot2" class="font-mono bg-white px-2 py-1 rounded shadow-sm text-green-700">0.00</span>
+                </div>
+
+                <div id="dot3-container" class="p-3 bg-red-50 rounded-xl border border-red-200 flex flex-col gap-2 transition-colors">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-[#EA4335] text-sm">向量 EF · AH</span>
+                        <span id="dot3" class="font-mono bg-white px-2 py-1 rounded shadow-sm text-red-700 font-bold">0.00</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-red-600 bg-red-100/50 p-1.5 rounded">
+                        <span>EF 与 AH 夹角:</span>
+                        <span id="angle" class="font-bold">0.00°</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 结论区 -->
+            <div class="mt-auto p-4 bg-[#FFF8E1] rounded-xl border border-[#FBBC05]">
+                <h3 class="font-bold text-[#F9A825] flex items-center gap-2">
+                    <i class="fas fa-lightbulb"></i> 探究发现
+                </h3>
+                <p class="text-xs text-gray-700 mt-2 leading-relaxed">
+                    本例构造了一个 <b>B点为直角顶点</b> 的特例四面体。此模型满足对棱互相垂直。<br>
+                    此时垂足 H 与 B 重合。计算发现 <b>EF 与 AH 夹角并非 90°</b>！<br>
+                    由此可见，原命题在一般情况下 <b>不成立</b>。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧 3D 视图 -->
+    <div class="w-full md:w-2/3 lg:w-3/4 bg-white rounded-2xl shadow-lg relative overflow-hidden flex flex-col" id="canvas-container">
+        <!-- 悬浮提示 -->
+        <div class="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-md text-sm font-semibold text-gray-600 flex items-center gap-2 border border-blue-50">
+            <i class="fas fa-hand-pointer text-[#4285F4] animate-bounce"></i> 
+            拖动旋转视角 / 滚轮缩放查看
+        </div>
+        
+        <!-- 图例 -->
+        <div class="absolute bottom-4 right-4 z-10 bg-white/90 backdrop-blur p-3 rounded-xl shadow-md text-xs font-medium text-gray-600 border border-gray-100 flex flex-col gap-2">
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-[#4285F4]"></div> 顶点 A, B, C, D</div>
+            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-[#FBBC05]"></div> 中点 E, F</div>
+            <div class="flex items-center gap-2"><div class="w-4 h-1 bg-[#FBBC05]"></div> 中点连线 EF</div>
+            <div class="flex items-center gap-2"><div class="w-4 h-1 bg-[#EA4335]"></div> 垂线 AH</div>
+        </div>
+
+        <!-- 3D Canvas 容器 -->
+        <div id="webgl-output" class="w-full h-full min-h-[400px]"></div>
+    </div>
+
+    <!-- Three.js 依赖 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.zcat.cn/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <!-- 主逻辑脚本 -->
+    <script>
+        let scene, camera, renderer, controls;
+        let sphereA, sphereB, sphereC, sphereD, sphereE, sphereF;
+        let labelA, labelB, labelC, labelD, labelE, labelF;
+        let lineAB, lineAC, lineAD, lineBC, lineBD, lineCD;
+        let lineEF, lineAH;
+        let facesMesh;
+
+        // 颜色定义
+        const COLOR_VERTEX = 0x4285F4; // 蓝
+        const COLOR_MIDPOINT = 0xFBBC05; // 黄
+        const COLOR_EF = 0xFBBC05; // 黄
+        const COLOR_AH = 0xEA4335; // 红
+        const COLOR_EDGE = 0xa0aec0; // 灰
+        
+        init();
+        animate();
+
+        function init() {
+            const container = document.getElementById('webgl-output');
+            
+            // 场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('#F0F7F4');
+
+            // 摄像机
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(12, 10, 15);
+
+            // 渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // 控制器
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.target.set(2, 3, 2);
+
+            // 光源
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            // 辅助网格
+            const gridHelper = new THREE.GridHelper(20, 20, 0xcccccc, 0xe2e8f0);
+            gridHelper.position.y = -0.01; // 稍微靠下避免闪烁
+            scene.add(gridHelper);
+
+            // 创建物体
+            createObjects();
+
+            // 监听窗口缩放
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // 初始更新
+            updateSceneFromSliders();
+        }
+
+        // 创建基础网格和材质
+        function createObjects() {
+            const vertexGeo = new THREE.SphereGeometry(0.15, 32, 32);
+            const midGeo = new THREE.SphereGeometry(0.12, 32, 32);
+            
+            const matVertex = new THREE.MeshPhongMaterial({ color: COLOR_VERTEX });
+            const matMid = new THREE.MeshPhongMaterial({ color: COLOR_MIDPOINT });
+
+            sphereA = new THREE.Mesh(vertexGeo, matVertex); scene.add(sphereA);
+            sphereB = new THREE.Mesh(vertexGeo, new THREE.MeshPhongMaterial({ color: COLOR_AH })); scene.add(sphereB); // B即为H，用红色标出
+            sphereC = new THREE.Mesh(vertexGeo, matVertex); scene.add(sphereC);
+            sphereD = new THREE.Mesh(vertexGeo, matVertex); scene.add(sphereD);
+            sphereE = new THREE.Mesh(midGeo, matMid); scene.add(sphereE);
+            sphereF = new THREE.Mesh(midGeo, matMid); scene.add(sphereF);
+
+            labelA = makeTextSprite("A", "#4285F4"); scene.add(labelA);
+            labelB = makeTextSprite("B(H)", "#EA4335"); scene.add(labelB);
+            labelC = makeTextSprite("C", "#4285F4"); scene.add(labelC);
+            labelD = makeTextSprite("D", "#4285F4"); scene.add(labelD);
+            labelE = makeTextSprite("E", "#F9A825"); scene.add(labelE);
+            labelF = makeTextSprite("F", "#F9A825"); scene.add(labelF);
+
+            // 细线（边）
+            lineAB = createThinLine(COLOR_EDGE);
+            lineAC = createThinLine(COLOR_EDGE);
+            lineAD = createThinLine(COLOR_EDGE);
+            lineBC = createThinLine(COLOR_EDGE);
+            lineBD = createThinLine(COLOR_EDGE);
+            lineCD = createThinLine(COLOR_EDGE);
+
+            // 粗线（特殊段）
+            lineEF = createThickLine(COLOR_EF, 0.08);
+            lineAH = createThickLine(COLOR_AH, 0.08);
+
+            // 半透明面
+            const faceMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x4285F4, 
+                transparent: true, 
+                opacity: 0.08, 
+                side: THREE.DoubleSide 
+            });
+            facesMesh = new THREE.Mesh(new THREE.BufferGeometry(), faceMaterial);
+            scene.add(facesMesh);
+        }
+
+        function createThinLine(colorHex) {
+            const material = new THREE.LineBasicMaterial({ color: colorHex });
+            const geometry = new THREE.BufferGeometry();
+            const line = new THREE.Line(geometry, material);
+            scene.add(line);
+            return line;
+        }
+
+        function createThickLine(colorHex, radius) {
+            const material = new THREE.MeshPhongMaterial({ color: colorHex });
+            const geometry = new THREE.CylinderGeometry(radius, radius, 1, 16);
+            geometry.translate(0, 0.5, 0); // 改变中心点至底端方便基于距离缩放
+            geometry.rotateX(Math.PI / 2); // 指向Z轴
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+            return mesh;
+        }
+
+        function makeTextSprite(message, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 128;
+            canvas.height = 128;
+            context.font = "Bold 40px 'Microsoft YaHei', sans-serif";
+            context.fillStyle = color;
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            context.fillText(message, 64, 64);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(1.5, 1.5, 1);
+            return sprite;
+        }
+
+        // 更新逻辑
+        function updateThinLine(line, p1, p2) {
+            line.geometry.setFromPoints([p1, p2]);
+        }
+
+        function updateThickLine(cylinder, p1, p2) {
+            const distance = p1.distanceTo(p2);
+            cylinder.position.copy(p1);
+            cylinder.scale.set(1, 1, distance);
+            cylinder.lookAt(p2);
+        }
+
+        function updateFaces(vA, vB, vC, vD) {
+            const vertices = new Float32Array([
+                // ABC
+                vA.x, vA.y, vA.z,  vB.x, vB.y, vB.z,  vC.x, vC.y, vC.z,
+                // ACD
+                vA.x, vA.y, vA.z,  vC.x, vC.y, vC.z,  vD.x, vD.y, vD.z,
+                // ADB
+                vA.x, vA.y, vA.z,  vD.x, vD.y, vD.z,  vB.x, vB.y, vB.z,
+                // BCD
+                vB.x, vB.y, vB.z,  vC.x, vC.y, vC.z,  vD.x, vD.y, vD.z,
+            ]);
+            facesMesh.geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            facesMesh.geometry.computeVertexNormals();
+        }
+
+        function updateSceneFromSliders() {
+            const a = parseFloat(document.getElementById('sliderA').value);
+            const c = parseFloat(document.getElementById('sliderC').value);
+            const d = parseFloat(document.getElementById('sliderD').value);
+            
+            document.getElementById('valA').innerText = a.toFixed(1);
+            document.getElementById('valC').innerText = c.toFixed(1);
+            document.getElementById('valD').innerText = d.toFixed(1);
+
+            // 在此坐标系中，设B在原点，BCD在XZ平面(y=0)
+            // A在Y轴上以保证AB垂直于BCD平面
+            const vA = new THREE.Vector3(0, a, 0);
+            const vB = new THREE.Vector3(0, 0, 0);
+            const vC = new THREE.Vector3(c, 0, 0);
+            const vD = new THREE.Vector3(0, 0, d);
+
+            const vE = new THREE.Vector3().addVectors(vA, vC).multiplyScalar(0.5);
+            const vF = new THREE.Vector3().addVectors(vB, vD).multiplyScalar(0.5);
+
+            // 更新球体
+            sphereA.position.copy(vA);
+            sphereB.position.copy(vB);
+            sphereC.position.copy(vC);
+            sphereD.position.copy(vD);
+            sphereE.position.copy(vE);
+            sphereF.position.copy(vF);
+
+            // 更新标签
+            labelA.position.copy(vA).add(new THREE.Vector3(0, 0.4, 0));
+            labelB.position.copy(vB).add(new THREE.Vector3(-0.5, -0.4, 0));
+            labelC.position.copy(vC).add(new THREE.Vector3(0.4, 0, 0));
+            labelD.position.copy(vD).add(new THREE.Vector3(0, 0, 0.4));
+            labelE.position.copy(vE).add(new THREE.Vector3(0.3, 0.3, 0));
+            labelF.position.copy(vF).add(new THREE.Vector3(0.3, 0, 0.3));
+
+            // 更新边
+            updateThinLine(lineAB, vA, vB);
+            updateThinLine(lineAC, vA, vC);
+            updateThinLine(lineAD, vA, vD);
+            updateThinLine(lineBC, vB, vC);
+            updateThinLine(lineBD, vB, vD);
+            updateThinLine(lineCD, vC, vD);
+
+            // 更新特殊线 (H与B重合，所以AH就是AB)
+            updateThickLine(lineEF, vE, vF);
+            updateThickLine(lineAH, vA, vB);
+
+            // 更新面
+            updateFaces(vA, vB, vC, vD);
+
+            // 数据计算
+            const vecAB = new THREE.Vector3().subVectors(vB, vA);
+            const vecCD = new THREE.Vector3().subVectors(vD, vC);
+            const vecAD = new THREE.Vector3().subVectors(vD, vA);
+            const vecBC = new THREE.Vector3().subVectors(vC, vB);
+            
+            const dot1 = vecAB.dot(vecCD);
+            const dot2 = vecAD.dot(vecBC);
+            document.getElementById('dot1').innerText = Math.abs(dot1) < 0.001 ? "0.00" : dot1.toFixed(2);
+            document.getElementById('dot2').innerText = Math.abs(dot2) < 0.001 ? "0.00" : dot2.toFixed(2);
+
+            const vecEF = new THREE.Vector3().subVectors(vF, vE);
+            const vecAH = new THREE.Vector3().subVectors(vB, vA); // H is B
+            
+            const dot3 = vecEF.dot(vecAH);
+            document.getElementById('dot3').innerText = dot3.toFixed(2);
+
+            const angleRad = vecEF.angleTo(vecAH);
+            const angleDeg = THREE.MathUtils.radToDeg(angleRad);
+            document.getElementById('angle').innerText = angleDeg.toFixed(2) + "°";
+
+            // UI 反馈
+            const dot3Container = document.getElementById('dot3-container');
+            const dot3Text = document.getElementById('dot3');
+            if (Math.abs(dot3) < 0.01) {
+                dot3Container.className = "p-3 bg-green-50 rounded-xl border border-green-200 flex flex-col gap-2 transition-colors";
+                dot3Text.className = "font-mono bg-white px-2 py-1 rounded shadow-sm text-green-700 font-bold";
+            } else {
+                dot3Container.className = "p-3 bg-red-50 rounded-xl border border-red-200 flex flex-col gap-2 transition-colors";
+                dot3Text.className = "font-mono bg-white px-2 py-1 rounded shadow-sm text-red-700 font-bold";
+            }
+        }
+
+        // 绑定事件
+        document.getElementById('sliderA').addEventListener('input', updateSceneFromSliders);
+        document.getElementById('sliderC').addEventListener('input', updateSceneFromSliders);
+        document.getElementById('sliderD').addEventListener('input', updateSceneFromSliders);
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            // 让文字始终面向摄像机
+            [labelA, labelB, labelC, labelD, labelE, labelF].forEach(lbl => {
+                if(lbl) lbl.quaternion.copy(camera.quaternion);
+            });
+            
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>

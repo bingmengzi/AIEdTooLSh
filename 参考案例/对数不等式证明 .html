@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>对数不等式证明 - 互动演示课件</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <!-- 引入 Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        eduBg: '#F5F7FB',     // 护眼浅蓝灰背景
+                        eduBlue: '#4285F4',   // 互动/主要
+                        eduGreen: '#34A853',  // 成功/完成
+                        eduYellow: '#FBBC05', // 提示/高亮
+                        eduRed: '#EA4335',    // 强调/重置
+                        mathDark: '#2C3E50'   // 数学公式默认颜色
+                    },
+                    fontFamily: {
+                        sans: ['"Microsoft YaHei"', '微软雅黑', 'sans-serif'],
+                        serif: ['"Times New Roman"', 'serif'] // 用于部分数学变量
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* 页面基础与平滑滚动 */
+        html { scroll-behavior: smooth; }
+        body { font-family: "Microsoft YaHei", sans-serif; -webkit-tap-highlight-color: transparent; }
+
+        /* --- 数学公式 HTML+CSS 排版组件 --- */
+        .math-expr { display: inline-flex; align-items: center; font-family: "Times New Roman", serif; font-size: 1.5rem; color: #2C3E50; }
+        /* 分式 */
+        .frac { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 0.25rem; vertical-align: middle; }
+        .frac .num { border-bottom: 2px solid #2C3E50; padding: 0 0.25rem; margin-bottom: 2px; line-height: 1.2; }
+        .frac .den { padding: 0 0.25rem; line-height: 1.2; }
+        /* 运算符 */
+        .op { margin: 0 0.5rem; font-weight: bold; }
+        /* 下标 */
+        .math-sub { font-size: 0.6em; vertical-align: sub; margin-left: 1px; }
+        /* 上标 */
+        .math-sup { font-size: 0.6em; vertical-align: super; margin-left: 1px; }
+
+        /* --- 动画效果 --- */
+        .step-card {
+            opacity: 0;
+            transform: translateY(20px) scale(0.98);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: none;
+        }
+        .step-card.active {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            display: flex;
+        }
+        .pulse-highlight {
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(251, 188, 5, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(251, 188, 5, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(251, 188, 5, 0); }
+        }
+    </style>
+</head>
+<body class="bg-eduBg min-h-screen flex flex-col pt-4 pb-32 md:pb-24">
+
+    <!-- 顶部标题栏 -->
+    <header class="w-full max-w-5xl mx-auto px-4 mb-6">
+        <div class="bg-white rounded-2xl shadow-md p-4 flex items-center justify-between border-l-8 border-eduBlue">
+            <div class="flex items-center gap-4">
+                <img src="https://api.zcat.cn/udata/718570/png/d8847b1fd280bb00c363ffa0a2f75fad.png" 
+                     alt="老师" class="w-16 h-16 rounded-full object-cover shadow-sm bg-blue-50">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800 tracking-wide">趣味数学：对数不等式证明</h1>
+                    <p class="text-gray-500 text-sm mt-1">发现规律，化繁为简 💡</p>
+                </div>
+            </div>
+            <!-- 进度指示器 -->
+            <div class="hidden md:flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-xl">
+                <span class="text-eduBlue font-bold"><i class="fa-solid fa-flag-checkered mr-2"></i>进度</span>
+                <span id="progress-text" class="text-xl font-bold text-gray-700">1 / 7</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 核心教学区 -->
+    <main class="w-full max-w-5xl mx-auto px-4 flex-grow flex flex-col gap-4 relative" id="steps-container">
+
+        <!-- 题目固定展示区 -->
+        <div class="bg-white rounded-2xl shadow-md p-6 border border-gray-100 mb-2">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="bg-eduRed text-white px-3 py-1 rounded-lg text-sm font-bold shadow-sm">求证</span>
+            </div>
+            <div class="flex justify-center items-center p-4 bg-[#FAFAF5] rounded-xl border border-yellow-100">
+                <!-- 原题公式 HTML 排版 -->
+                <div class="math-expr text-3xl">
+                    <div class="frac">
+                        <div class="num">1</div>
+                        <div class="den">log<span class="math-sub">5</span>19</div>
+                    </div>
+                    <span class="op">+</span>
+                    <div class="frac">
+                        <div class="num">2</div>
+                        <div class="den">log<span class="math-sub">3</span>19</div>
+                    </div>
+                    <span class="op">+</span>
+                    <div class="frac">
+                        <div class="num">3</div>
+                        <div class="den">log<span class="math-sub">2</span>19</div>
+                    </div>
+                    <span class="op ml-4">&lt;</span>
+                    <span>2</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 动态步骤容器将由 JS 渲染 -->
+
+    </main>
+
+    <!-- 底部悬浮控制台 (适配平板拇指操作区域) -->
+    <footer class="fixed bottom-0 left-0 w-full bg-white shadow-[0_-4px_15px_rgba(0,0,0,0.05)] border-t border-gray-100 z-50">
+        <div class="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
+            
+            <button id="btn-reset" onclick="resetSteps()" class="flex items-center gap-2 px-4 py-3 text-gray-500 hover:text-eduRed hover:bg-red-50 rounded-xl transition-colors font-bold text-lg">
+                <i class="fa-solid fa-rotate-left"></i> <span class="hidden md:inline">重头开始</span>
+            </button>
+
+            <div class="flex-grow flex justify-center">
+                <!-- 移动端进度条底座 -->
+                <div class="w-3/4 max-w-xs h-3 bg-gray-100 rounded-full overflow-hidden md:hidden shadow-inner">
+                    <div id="progress-bar-mobile" class="h-full bg-eduBlue transition-all duration-300 w-[14%]"></div>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button id="btn-prev" onclick="prevStep()" class="flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-600 rounded-xl shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-200 transition-all active:scale-95 font-bold text-lg">
+                    <i class="fa-solid fa-arrow-left"></i> 上一步
+                </button>
+                <button id="btn-next" onclick="nextStep()" class="flex items-center gap-2 px-8 py-3 bg-eduBlue text-white rounded-xl shadow-md shadow-blue-200 hover:bg-blue-600 transition-all active:scale-95 font-bold text-lg pulse-highlight">
+                    下一步 <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JS 逻辑部分 -->
+    <script>
+        // 定义教学步骤数据
+        const stepsData = [
+            {
+                title: "思路破局：观察特征",
+                icon: "fa-magnifying-glass",
+                color: "text-eduBlue",
+                bgColor: "bg-blue-50",
+                desc: "观察题目左边，分母全是 <b>真数为19</b> 的对数。为了统一，我们使用 <b>换底公式变体</b>，把它们“翻转”上来：",
+                formula: `
+                    <div class="math-expr">
+                        <div class="frac"><div class="num">1</div><div class="den">log<span class="math-sub">a</span>b</div></div>
+                        <span class="op">=</span>
+                        <div class="frac"><div class="num">ln a</div><div class="den">ln b</div></div>
+                    </div>
+                `,
+                note: "提示：换底公式可以把复杂的底数统一转化为自然对数 ln（或常用对数）。"
+            },
+            {
+                title: "第一步：全面换底",
+                icon: "fa-pen",
+                color: "text-eduYellow",
+                bgColor: "bg-yellow-50",
+                desc: "应用换底公式，左边原式变为：",
+                formula: `
+                    <div class="math-expr">
+                        <div class="frac"><div class="num">ln 5</div><div class="den">ln 19</div></div>
+                        <span class="op">+</span>
+                        <span class="mr-1">2&times;</span>
+                        <div class="frac"><div class="num">ln 3</div><div class="den">ln 19</div></div>
+                        <span class="op">+</span>
+                        <span class="mr-1">3&times;</span>
+                        <div class="frac"><div class="num">ln 2</div><div class="den">ln 19</div></div>
+                    </div>
+                `,
+                note: "看！分母都变成一样的 <b>ln 19</b> 了，可以直接合并分子！"
+            },
+            {
+                title: "第二步：合并分子并处理系数",
+                icon: "fa-layer-group",
+                color: "text-blue-500",
+                bgColor: "bg-blue-50",
+        desc: "利用对数性质 <span class='math-expr text-lg text-eduBlue bg-white px-2 rounded'>n ln a = ln a<span class='math-sup'>n</span></span>，把前面的数字放到真数的指数上：",
+                formula: `
+                    <div class="math-expr">
+                        <div class="frac">
+                            <div class="num">ln 5 <span class="op">+</span> ln 3<span class="math-sup">2</span> <span class="op">+</span> ln 2<span class="math-sup">3</span></div>
+                            <div class="den">ln 19</div>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "第三步：计算指数幂",
+                icon: "fa-calculator",
+                color: "text-purple-500",
+                bgColor: "bg-purple-50",
+                desc: "计算一下简单的乘方： 3² = 9， 2³ = 8。",
+                formula: `
+                    <div class="math-expr">
+                        <div class="frac">
+                            <div class="num text-purple-700 font-bold">ln 5 <span class="op">+</span> ln 9 <span class="op">+</span> ln 8</div>
+                            <div class="den">ln 19</div>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "第四步：对数加法转乘法",
+                icon: "fa-link",
+                color: "text-orange-500",
+                bgColor: "bg-orange-50",
+        desc: "再次利用对数性质 <span class='math-expr text-lg text-orange-600 bg-white px-2 rounded'>ln a + ln b = ln(ab)</span>，把分子上的对数加法，变成真数的连乘：",
+                formula: `
+                    <div class="math-expr">
+                        <div class="frac">
+                            <div class="num">ln (5 &times; 9 &times; 8)</div>
+                            <div class="den">ln 19</div>
+                        </div>
+                        <span class="op">=</span>
+                        <div class="frac">
+                            <div class="num text-orange-600 font-bold">ln 360</div>
+                            <div class="den">ln 19</div>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                title: "第五步：换底公式大逆转！",
+                icon: "fa-rotate",
+                color: "text-eduBlue",
+                bgColor: "bg-blue-50",
+        desc: "现在我们得到了 <span class='math-expr text-lg'>ln 360 / ln 19</span>。利用换底公式逆推，把它变成单独一个对数：",
+                formula: `
+                    <div class="math-expr text-4xl">
+                        log<span class="math-sub text-2xl">19</span><span class="text-eduBlue font-bold ml-1">360</span>
+                    </div>
+                `,
+                note: "原式化简完成！现在我们要证明： <b>log<sub>19</sub> 360 < 2</b>"
+            },
+            {
+                title: "终局：简单比较，得出结论",
+                icon: "fa-check-circle",
+                color: "text-eduGreen",
+                bgColor: "bg-green-50",
+        desc: "我们知道 2 可以写成：<span class='math-expr text-lg'>log<span class='math-sub'>19</span>19<span class='math-sup'>2</span> = log<span class='math-sub'>19</span>361</span>。<br>因为底数 19 > 1，对数函数单调递增。",
+                formula: `
+                    <div class="flex flex-col items-center gap-4 w-full">
+                        <div class="math-expr text-2xl">
+                            <span class="text-gray-500">因为：</span> 360 <span class="op text-eduRed">&lt;</span> 361
+                        </div>
+                        <div class="math-expr text-3xl bg-white px-6 py-4 rounded-xl shadow-sm border-2 border-eduGreen">
+                            <span class="text-gray-600">所以：</span> 
+                            log<span class="math-sub">19</span>360 
+                            <span class="op text-eduRed font-bold">&lt;</span> 
+                            2
+                        </div>
+                    </div>
+                `,
+                note: "🎉 证明完毕！原不等式成立！",
+                isFinal: true
+            }
+        ];
+
+        let currentStep = 0;
+        const container = document.getElementById('steps-container');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const progressText = document.getElementById('progress-text');
+        const progressBarMobile = document.getElementById('progress-bar-mobile');
+
+        // 初始化渲染所有步骤（隐藏状态）
+        function initSteps() {
+            stepsData.forEach((step, index) => {
+                const card = document.createElement('div');
+                card.className = `step-card flex-col md:flex-row gap-4 bg-white rounded-2xl shadow-lg p-6 border-l-8 ${getBorderColor(index)} w-full`;
+                card.id = `step-${index}`;
+                
+                let html = `
+                    <div class="flex-grow">
+                        <h2 class="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
+                            <span class="w-8 h-8 rounded-full ${step.bgColor} ${step.color} flex items-center justify-center text-sm shadow-sm">
+                                <i class="fa-solid ${step.icon}"></i>
+                            </span>
+                            ${step.title}
+                        </h2>
+                        <p class="text-gray-600 mb-4 text-lg leading-relaxed">${step.desc}</p>
+                        
+                        <div class="py-6 px-4 bg-[#F8FAFC] rounded-xl flex justify-center items-center shadow-inner overflow-x-auto">
+                            ${step.formula}
+                        </div>
+                        
+                        ${step.note ? `<div class="mt-4 px-4 py-3 bg-yellow-50 text-yellow-800 rounded-lg text-sm border border-yellow-100 flex items-start gap-2">
+                            <i class="fa-solid fa-lightbulb text-yellow-500 mt-1"></i>
+                            <span>${step.note}</span>
+                        </div>` : ''}
+                    </div>
+                `;
+
+                // 最后一步加上彩带插图
+                if (step.isFinal) {
+                    html += `
+                        <div class="hidden md:flex flex-col justify-center items-center md:w-1/3 pl-4 border-l border-gray-100">
+                            <img src="https://api.zcat.cn/udata/718570/png/77af4ff6f69901d8b10138e20b42e7e8.png" 
+                                 alt="完成" class="w-full max-w-[160px] object-contain drop-shadow-md">
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = html;
+                container.appendChild(card);
+            });
+            updateUI();
+        }
+
+        // 辅助函数：根据步骤分配左侧边框颜色
+        function getBorderColor(index) {
+            const colors = ['border-blue-400', 'border-yellow-400', 'border-blue-500', 'border-purple-400', 'border-orange-400', 'border-blue-600', 'border-green-500'];
+            return colors[index % colors.length];
+        }
+
+        // 更新 UI 状态
+        function updateUI() {
+            // 隐藏所有，显示当前
+            for (let i = 0; i < stepsData.length; i++) {
+                const card = document.getElementById(`step-${i}`);
+                if (i <= currentStep) {
+                    card.classList.add('active');
+                } else {
+                    card.classList.remove('active');
+                }
+            }
+
+            // 更新按钮状态
+            btnPrev.disabled = currentStep === 0;
+            
+            if (currentStep === stepsData.length - 1) {
+                btnNext.innerHTML = '<i class="fa-solid fa-flag text-yellow-300"></i> 演示完成';
+                btnNext.classList.remove('bg-eduBlue', 'hover:bg-blue-600', 'pulse-highlight');
+                btnNext.classList.add('bg-eduGreen', 'hover:bg-green-600', 'cursor-default');
+                btnNext.onclick = null; // 移除点击事件
+            } else {
+                btnNext.innerHTML = '下一步 <i class="fa-solid fa-arrow-right"></i>';
+                btnNext.classList.add('bg-eduBlue', 'hover:bg-blue-600', 'pulse-highlight');
+                btnNext.classList.remove('bg-eduGreen', 'hover:bg-green-600', 'cursor-default');
+                btnNext.onclick = nextStep; // 恢复点击事件
+            }
+
+            // 更新进度文字和移动端进度条
+            progressText.innerText = `${currentStep + 1} / ${stepsData.length}`;
+            const percent = ((currentStep + 1) / stepsData.length) * 100;
+            progressBarMobile.style.width = `${percent}%`;
+
+            // 自动滚动到最新展示的步骤（留出底部控制台的距离）
+            setTimeout(() => {
+                const currentCard = document.getElementById(`step-${currentStep}`);
+                if (currentCard) {
+                    const y = currentCard.getBoundingClientRect().top + window.pageYOffset - 100;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+            }, 100);
+        }
+
+        function nextStep() {
+            if (currentStep < stepsData.length - 1) {
+                currentStep++;
+                updateUI();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                // 隐藏当前这一步的动画处理
+                const card = document.getElementById(`step-${currentStep}`);
+                card.classList.remove('active');
+                currentStep--;
+                updateUI();
+            }
+        }
+
+        function resetSteps() {
+            currentStep = 0;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setTimeout(updateUI, 200); // 稍微延迟等待滚动
+        }
+
+        // 支持键盘快捷键控制（左/上、右/下、空格）
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+                e.preventDefault();
+                if(currentStep < stepsData.length - 1) nextStep();
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                prevStep();
+            }
+        });
+
+        // 页面加载完成后初始化
+        window.onload = initSteps;
+    </script>
+</body>
+</html>

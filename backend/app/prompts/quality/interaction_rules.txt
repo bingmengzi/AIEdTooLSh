@@ -1,0 +1,253 @@
+## 交互规范
+
+所有交互动画页面**必须**遵守以下交互设计规范，确保在桌面端和移动端都有流畅的体验。
+
+---
+
+## 一、鼠标与触摸事件（必须同时支持）
+
+### 1. 事件绑定模式（强制要求）
+
+必须同时绑定鼠标和触摸事件，且**触摸事件必须 `e.preventDefault()` 防止页面滚动**：
+
+```javascript
+// 鼠标事件
+canvas.addEventListener('mousedown', handleInputStart);
+canvas.addEventListener('mousemove', handleInputMove);
+window.addEventListener('mouseup', handleInputEnd);  // 绑定到 window！
+
+// 触摸事件（必须 preventDefault）
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();  // 关键！防止页面滚动
+    handleInputStart(e.touches[0]);
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();  // 关键！防止页面滚动
+    handleInputMove(e.touches[0]);
+}, { passive: false });
+
+window.addEventListener('touchend', handleInputEnd);
+```
+
+### 2. 获取坐标的统一函数
+
+```javascript
+function getEventPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    // 统一处理鼠标和触摸事件
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+    };
+}
+```
+
+---
+
+## 二、拖拽交互（三阶段处理）
+
+### 1. 拖拽必须有完整的三阶段
+
+| 阶段 | 事件 | 处理内容 |
+|------|------|----------|
+| 开始 | mousedown/touchstart | 检测命中、设置拖拽状态 |
+| 移动 | mousemove/touchmove | 更新位置、实时重绘 |
+| 结束 | mouseup/touchend | 清除拖拽状态 |
+
+### 2. 状态管理模式
+
+```javascript
+let state = {
+    isDragging: false,
+    dragTarget: null,   // 当前拖拽的对象标识
+    dragOffset: { x: 0, y: 0 }  // 拖拽偏移（可选）
+};
+```
+
+### 3. 碰撞检测（逻辑坐标）
+
+```javascript
+function handleInputStart(e) {
+    const coords = getCanvasCoords();
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const logicPos = toLogic(mouseX, mouseY, coords);
+    
+    // 检测是否命中可拖拽对象（距离阈值约 1.0 逻辑单位）
+    const distToTarget = Math.sqrt(
+        (logicPos.x - targetX) ** 2 + (logicPos.y - targetY) ** 2
+    );
+    
+    if (distToTarget < 1.0) {
+        state.isDragging = true;
+        state.dragTarget = 'targetName';
+    }
+}
+```
+
+### 4. mouseup/touchend 必须绑定到 window
+
+```javascript
+// 正确：绑定到 window，防止鼠标移出画布后失效
+window.addEventListener('mouseup', handleInputEnd);
+window.addEventListener('touchend', handleInputEnd);
+
+// 错误：只绑定到 canvas 会导致拖出画布后无法松手
+// canvas.addEventListener('mouseup', handleInputEnd);  // ❌
+```
+
+---
+
+## 三、滑块控件（实时响应）
+
+### 1. 使用 input 事件而非 change 事件
+
+```javascript
+// 正确：使用 input 事件，拖动过程中实时更新
+slider.addEventListener('input', (e) => {
+    state.param = parseFloat(e.target.value);
+    updateUI();
+    draw();  // 立即重绘
+});
+
+// 错误：使用 change 事件，只有松手才更新
+// slider.addEventListener('change', handler);  // ❌
+```
+
+### 2. 双向同步（拖拽时同步滑块）
+
+当通过拖拽改变参数时，滑块也要同步更新：
+
+```javascript
+function handleInputMove(e) {
+    if (!state.isDragging) return;
+    
+    // 更新参数值...
+    state.param = newValue;
+    
+    // 同步滑块位置
+    document.getElementById('paramSlider').value = state.param;
+    
+    updateUI();
+    draw();
+}
+```
+
+---
+
+## 四、视觉反馈
+
+### 1. 可拖拽元素的视觉状态
+
+| 状态 | 视觉效果 |
+|------|----------|
+| 默认 | 实心点 + 光晕效果 |
+| 悬停 | cursor: grab; 颜色加深 |
+| 拖拽中 | cursor: grabbing; 更大的光晕 |
+
+### 2. 光标变化
+
+```javascript
+function handleInputMove(e) {
+    const pos = getEventPos(e);
+    
+    if (state.isDragging) {
+        canvas.style.cursor = 'grabbing';
+    } else if (isOverDraggable(pos)) {
+        canvas.style.cursor = 'grab';
+    } else {
+        canvas.style.cursor = 'crosshair';
+    }
+}
+```
+
+### 3. 关键点的光晕效果
+
+```javascript
+function drawPointWithGlow(x, y, color) {
+    const pos = toScreen(x, y, coords);
+    
+    // 光晕（RadialGradient）
+    const gradient = ctx.createRadialGradient(pos.x, pos.y, 2, pos.x, pos.y, 15);
+    gradient.addColorStop(0, 'rgba(234, 67, 53, 0.4)');
+    gradient.addColorStop(1, 'rgba(234, 67, 53, 0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 15, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // 实心点
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
+    ctx.fill();
+}
+```
+
+---
+
+## 五、操作提示
+
+### 1. 浮动提示框（左上角）
+
+```html
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-2 rounded-lg shadow-sm border border-gray-100 pointer-events-none">
+    <div class="flex items-center gap-2 text-sm text-gray-600">
+        <i class="fa-solid fa-hand-pointer text-blue-500"></i>
+        <span>拖拽 <b class="text-red-500">红点</b> 改变参数</span>
+    </div>
+</div>
+```
+
+### 2. 滑块下方说明
+
+```html
+<input type="range" id="slider" ...>
+<p class="text-xs text-gray-400">控制开口大小：参数越大，开口越宽</p>
+```
+
+---
+
+## 六、触摸设备优化
+
+### 1. CSS 配置
+
+```css
+body {
+    touch-action: none;  /* 整个页面禁止默认触摸行为 */
+    overflow: hidden;    /* 防止滚动 */
+}
+
+canvas {
+    touch-action: none;
+}
+```
+
+### 2. viewport 配置
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+```
+
+### 3. 交互区域尺寸
+
+- 可点击/拖拽的元素，检测半径至少 1.0 逻辑单位（约 40-50 屏幕像素）
+- 按钮最小尺寸 44x44px（Apple HIG 推荐）
+
+---
+
+## 七、边界限制
+
+```javascript
+// 限制参数在有效范围内
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+// 使用示例
+state.param = clamp(newValue, 0.1, 5.0);
+```
