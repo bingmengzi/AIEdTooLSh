@@ -1,4 +1,5 @@
 """Kimi 模型客户端"""
+import os
 import httpx
 import json
 import logging
@@ -12,8 +13,15 @@ logger = logging.getLogger(__name__)
 class KimiClient(AIProvider):
     def __init__(self):
         self.name = KIMI_CONFIG["name"]
-        self.model = KIMI_CONFIG["model"]
-        self.api_base = KIMI_CONFIG["api_base"]
+        # Allow overriding the model via Settings (from .env)
+        self.model = getattr(settings, 'KIMI_MODEL', None) or KIMI_CONFIG["model"]
+        # Allow overriding the API base via Settings (from .env) or environment variable.
+        # Priority: settings.KIMI_BASE_URL (pydantic-loaded .env) -> OS env KIMI_BASE_URL -> hardcoded config
+        api_base_from_settings = getattr(settings, 'KIMI_BASE_URL', None)
+        if api_base_from_settings:
+            self.api_base = api_base_from_settings
+        else:
+            self.api_base = os.environ.get("KIMI_BASE_URL", KIMI_CONFIG["api_base"])
         self.priority = KIMI_CONFIG["priority"]
         self.timeout = KIMI_CONFIG["timeout"]
         self.api_key = settings.KIMI_API_KEY
@@ -32,7 +40,13 @@ class KimiClient(AIProvider):
         logger.info(f"[{self.name}] API Key 检查通过")
         
         max_tokens = max_tokens or KIMI_CONFIG["max_tokens"]
-        url = f"{self.api_base}/chat/completions"
+        # Build the full URL for the completions endpoint. If the configured api_base
+        # already contains the path (e.g. endswith or contains '/chat/completions'),
+        # use it as-is to avoid duplicating the path.
+        if "/chat/completions" in self.api_base:
+            url = self.api_base.rstrip('/')
+        else:
+            url = f"{self.api_base.rstrip('/')}/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -46,7 +60,14 @@ class KimiClient(AIProvider):
         }
         
         # 日志：HTTP请求信息
-        logger.info(f"[{self.name}] 发送请求 | URL={url} | model={self.model} | max_tokens={max_tokens} | temperature={temperature}")
+        # Prepare a masked preview of the Authorization header for safe logging
+        if self.api_key:
+            masked_key = f"{self.api_key[:8]}..." if len(self.api_key) > 8 else self.api_key
+            auth_preview = f"Bearer {masked_key} (len={len(self.api_key)})"
+        else:
+            auth_preview = "<no-key>"
+
+        logger.info(f"[{self.name}] 发送请求 | URL={url} | model={self.model} | max_tokens={max_tokens} | temperature={temperature} | Authorization_preview={auth_preview}")
         
         # DEBUG: 记录 messages 内容（截取前2000字符）
         for i, msg in enumerate(messages):

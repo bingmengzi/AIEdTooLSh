@@ -10,6 +10,10 @@ _BASE_DIR = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     # AI Provider API Keys
     KIMI_API_KEY: str = ""
+    # Optional override for provider base URLs (e.g. https://poloai.top)
+    KIMI_BASE_URL: str = ""
+    # Optional override for provider model names
+    KIMI_MODEL: str = ""
     QWEN_API_KEY: str = ""
     DEEPSEEK_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
